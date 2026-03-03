@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TradFi Live (Binance + MEXC)</title>
+  <style>
+    :root{
+      --bg:#0b1220; --card:#0f1a2e; --card2:#0d1628;
+      --text:#e6eefc; --muted:#93a4c7; --line:rgba(255,255,255,.08);
+      --up:#22c55e; --down:#ef4444; --shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+      background:
+        radial-gradient(900px 600px at 10% 0%, rgba(80,120,255,.18), transparent 55%),
+        radial-gradient(800px 500px at 90% 10%, rgba(34,197,94,.14), transparent 55%),
+        var(--bg);
+      color:var(--text);
+    }
+    .wrap{max-width:1240px;margin:0 auto;padding:22px 16px 40px}
+    .top{
+      display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+      padding:16px 16px;border:1px solid var(--line);border-radius:18px;background:rgba(15,26,46,.7);
+      box-shadow: var(--shadow);backdrop-filter: blur(10px);
+    }
+    .title{display:flex;flex-direction:column;gap:4px}
+    .title h1{margin:0;font-size:18px;letter-spacing:.2px}
+    .title .sub{color:var(--muted);font-size:12.5px;line-height:1.35}
+    .status{display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:12.5px;}
+    .dot{width:10px;height:10px;border-radius:999px;background:#64748b;display:inline-block;box-shadow:0 0 0 4px rgba(100,116,139,.15);vertical-align:middle;}
+    .dot.live{background:var(--up);box-shadow:0 0 0 4px rgba(34,197,94,.16)}
+    .dot.dead{background:var(--down);box-shadow:0 0 0 4px rgba(239,68,68,.16)}
+    .btn{
+      border:1px solid var(--line);
+      background: linear-gradient(180deg, rgba(31,42,68,.9), rgba(15,26,46,.9));
+      color:var(--text);padding:10px 12px;border-radius:14px;font-size:13px;cursor:pointer;
+      transition: transform .06s ease, filter .15s ease;
+    }
+    .btn:active{transform: translateY(1px)}
+    .filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .pill{
+      padding:8px 10px;border-radius:999px;border:1px solid var(--line);
+      background: rgba(31,42,68,.7);color:var(--muted);font-size:12.5px;cursor:pointer;user-select:none;
+    }
+    .pill.on{color:var(--text);border-color:rgba(80,120,255,.35);background:rgba(80,120,255,.12)}
+    .sortWrap{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:12.5px}
+    select{border:1px solid var(--line);background: rgba(31,42,68,.7);color:var(--text);padding:9px 10px;border-radius:12px;font-size:13px;outline:none;}
+    .grid{margin-top:14px;border:1px solid var(--line);border-radius:18px;overflow:hidden;background: rgba(15,26,46,.55);box-shadow: var(--shadow);backdrop-filter: blur(8px);}
+    .hdr, .row{display:grid;grid-template-columns: 1.65fr .95fr .75fr .85fr;gap:12px;padding:14px 14px;align-items:center;}
+    .hdr{background: rgba(13,22,40,.75);border-bottom:1px solid var(--line);color:var(--muted);font-size:12px;letter-spacing:.3px;}
+    .row{border-bottom:1px solid var(--line);background: rgba(15,26,46,.55);cursor:pointer}
+    .row:hover{filter: brightness(1.05)}
+    .row:nth-child(even){background: rgba(13,22,40,.48)}
+    .row:last-child{border-bottom:none}
+    .sym{display:flex;gap:10px;align-items:center;min-width:0}
+    .sym .left{display:flex;flex-direction:column;gap:4px;min-width:0}
+    .sym .code{font-weight:900;letter-spacing:.2px;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .sym .meta{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12.5px;flex-wrap:wrap}
+    .tag{font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--line);background: rgba(31,42,68,.6);color:var(--muted);}
+    .tag.stock{color:#ffd670;border-color:rgba(255,214,112,.2);background:rgba(255,214,112,.08)}
+    .tag.index{color:#c4b5fd;border-color:rgba(196,181,253,.22);background:rgba(196,181,253,.08)}
+    .tag.fx{color:#93c5fd;border-color:rgba(147,197,253,.22);background:rgba(147,197,253,.08)}
+    .tag.commo{color:#a7f3d0;border-color:rgba(167,243,208,.2);background:rgba(167,243,208,.08)}
+    .tag.energy{color:#fca5a5;border-color:rgba(252,165,165,.22);background:rgba(252,165,165,.08)}
+    .tag.ex{color:#a5b4fc;border-color:rgba(165,180,252,.22);background:rgba(165,180,252,.08)}
+    .price{font-variant-numeric: tabular-nums;font-size:22px;font-weight:900;letter-spacing:.2px}
+    .usd{color:var(--muted);font-size:12px;margin-top:4px;font-variant-numeric: tabular-nums}
+    .chg{justify-self:end;font-variant-numeric: tabular-nums;font-weight:900;padding:10px 12px;border-radius:14px;min-width:110px;text-align:center;border:1px solid var(--line);background: rgba(31,42,68,.55);}
+    .chg.up{background: rgba(34,197,94,.14);border-color: rgba(34,197,94,.22);color:#bbf7d0}
+    .chg.down{background: rgba(239,68,68,.14);border-color: rgba(239,68,68,.22);color:#fecaca}
+    .vol{color:var(--muted);font-size:12.5px;font-variant-numeric: tabular-nums;justify-self:end}
+    .note{margin-top:10px;color:var(--muted);font-size:12.5px;line-height:1.45;padding:0 2px}
+
+    /* TV view */
+    #tvView{display:none}
+    #tvBox{
+      margin-top:14px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      overflow:hidden;
+      background: rgba(15,26,46,.55);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+    #tvHeader{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+      padding:14px 14px;border-bottom:1px solid var(--line);
+      background: rgba(13,22,40,.75);
+    }
+    #tvTitle{font-weight:800}
+    #tvChart{height:72vh;min-height:520px}
+    @media (max-width:760px){
+      .hdr{display:none}
+      .row{grid-template-columns: 1fr 1fr;grid-template-areas:"sym chg" "price vol" "usd vol";row-gap:8px;}
+      .sym{grid-area:sym}.chg{grid-area:chg}.priceWrap{grid-area:price}.vol{grid-area:vol}.usd{grid-area:usd}
+      .chg{justify-self:end}.vol{justify-self:end}
+      #tvChart{height:70vh;min-height:480px}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <!-- LIST VIEW -->
+  <div id="listView">
+    <div class="top">
+      <div class="title">
+        <h1>TradFi Live (Binance + MEXC)</h1>
+        <div class="sub">
+          기본정렬: 지수 → 빅테크 → 나머지 · 행 클릭하면 TradingView 차트로 전환(뒤로 가능)
+        </div>
+      </div>
+
+      <div class="status">
+        <span><span class="dot" id="dotBinance"></span> Binance</span>
+        <span><span class="dot" id="dotMexc"></span> MEXC</span>
+        <span class="muted">|</span>
+        <span class="muted">업데이트:</span>
+        <span id="lastAnyUpdate">-</span>
+        <span class="muted">|</span>
+        <button class="btn" id="reconnectBtn">재연결</button>
+      </div>
+
+      <div class="filters">
+        <div class="pill on" id="filterAll">전체</div>
+        <div class="pill" id="filterStock">주식</div>
+        <div class="pill" id="filterIndex">지수/ETF</div>
+        <div class="pill" id="filterFX">FX</div>
+        <div class="pill" id="filterCommo">원자재/금속</div>
+        <div class="pill" id="filterEnergy">에너지</div>
+      </div>
+
+      <div class="sortWrap">
+        <span class="muted">정렬</span>
+        <select id="sortSel">
+          <option value="default">기본정렬</option>
+          <option value="chgDesc">등락률↓</option>
+          <option value="chgAsc">등락률↑</option>
+          <option value="volDesc">거래대금↓</option>
+          <option value="volAsc">거래대금↑</option>
+          <option value="name">이름</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid" id="grid">
+      <div class="hdr" id="hdr">
+        <div>종목</div>
+        <div class="muted">Last Price</div>
+        <div class="muted" style="justify-self:end;">Vol(24h)</div>
+        <div class="muted" style="justify-self:end;">Change(24h)</div>
+      </div>
+    </div>
+
+    <div class="note">
+      MEXC 주식 선물은 WS 구독용 심볼이 <span class="muted">AAPLSTOCK_USDT</span> 같은 형태인 경우가 많아(워밍업 후 자동 매핑).
+    </div>
+  </div>
+
+  <!-- TV VIEW -->
+  <div id="tvView">
+    <div class="top">
+      <div class="title">
+        <h1>TradingView</h1>
+        <div class="sub">실시간 차트(TradingView) · 뒤로를 누르면 목록으로 돌아가</div>
+      </div>
+      <div class="status">
+        <button class="btn" id="backBtn">← 뒤로</button>
+      </div>
+    </div>
+
+    <div id="tvBox">
+      <div id="tvHeader">
+        <div id="tvTitle">-</div>
+        <div class="muted" id="tvSubtitle">-</div>
+      </div>
+      <div id="tvChart"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== helpers ===== */
+const grid = document.getElementById("grid");
+const dotBinance = document.getElementById("dotBinance");
+const dotMexc = document.getElementById("dotMexc");
+const lastAnyUpdate = document.getElementById("lastAnyUpdate");
+const sortSel = document.getElementById("sortSel");
+const listView = document.getElementById("listView");
+const tvView = document.getElementById("tvView");
+const tvTitle = document.getElementById("tvTitle");
+const tvSubtitle = document.getElementById("tvSubtitle");
+const tvChart = document.getElementById("tvChart");
+
+function setDot(dot, state){
+  dot.classList.remove("live","dead");
+  if(state === "LIVE") dot.classList.add("live");
+  if(state === "DEAD") dot.classList.add("dead");
+}
+const nowHHMMSS = () => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;
+};
+const fmtPrice = (n) => {
+  if (!isFinite(n)) return "-";
+  const abs = Math.abs(n);
+  const decimals = abs >= 1000 ? 2 : abs >= 100 ? 2 : abs >= 10 ? 4 : 6;
+  return new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: decimals }).format(n);
+};
+const fmtVol = (n) => {
+  if (!isFinite(n)) return "-";
+  const abs = Math.abs(n);
+  const units = [{ v: 1e12, s: "T" },{ v: 1e9, s: "B" },{ v: 1e6, s: "M" },{ v: 1e3, s: "K" }];
+  for (const u of units) if (abs >= u.v) return (n / u.v).toFixed(2) + u.s;
+  return n.toFixed(2);
+};
+const fmtPct = (n) => {
+  if (!isFinite(n)) return "-";
+  const sign = n > 0 ? "+" : "";
+  return sign + n.toFixed(2) + "%";
+};
+function typeTagClass(type){
+  if(type==="Stock") return "stock";
+  if(type==="Index") return "index";
+  if(type==="FX") return "fx";
+  if(type==="Energy") return "energy";
+  return "commo";
+}
+
+/* ===== 기본정렬 그룹 정의 ===== */
+const INDEX_ORDER = ["NAS100","SP500","US30","QQQ","NIKKEI225"];
+const BIGTECH_ORDER = ["AAPL","MSFT","AMZN","NVDA","GOOGL","META","TSLA","ORCL","AMD","INTC"];
+const BIGTECH_SET = new Set(BIGTECH_ORDER);
+
+/* ===== TradingView 심볼: “나스닥 티커” 금지 → 거래소 티커로만 =====
+   - BINANCE:  BINANCE:XXXXUSDT.P
+   - MEXC:     MEXC:XXXXUSDT.P
+   - FX(derived): OANDA:EURUSD 같은 식으로 유지(주식/지수와 충돌 없음)
+*/
+function ensurePerpDotP(sym){
+  return sym.endsWith(".P") ? sym : (sym + ".P");
+}
+function tvSymbolFor(it){
+  // FX는 거래소 티커가 아니라 통상 브로커 심볼이 표준이라 그대로 유지
+  if(it.type === "FX"){
+    return "OANDA:" + it.base; // e.g. EURUSD
+  }
+
+  // ✅ 핵심: “Stock은 NASDAQ:AAA 이런 식” 절대 쓰지 않음
+  if(it.ex === "BINANCE"){
+    // 바이낸스 TradFi는 TV에서 .P로 잡히는 케이스가 일반적
+    return "BINANCE:" + ensurePerpDotP(it.display);
+  }
+  if(it.ex === "MEXC"){
+    // mexc는 display를 그대로 쓰고 .P만 붙여 시도
+    return "MEXC:" + ensurePerpDotP(it.display);
+  }
+
+  // 그 외(혹시)
+  return it.display;
+}
+
+/* ===== 0) 안 뜨는 종목 제거 ===== */
+const DEAD_DISPLAYS = new Set([
+  "CATLUSDT","DYAUSDT","FSLRUSDT","KLAUSDT","NUUUSDT","SNAPUSDT"
+]);
+
+/* ===== 1) Instruments =====
+   - Binance: 너가 캡처로 확인한 TradFi 종목만
+   - MEXC: Binance에 없는 애들 + FX/지수/에너지
+*/
+const BINANCE_SYMBOLS = {
+  stocks: ["CRCLUSDT","MSTRUSDT","HOODUSDT","PLTRUSDT","COINUSDT","TSLAUSDT","AMZNUSDT","INTCUSDT"],
+  metals: ["XAUUSDT","XAGUSDT","XPDUSDT","XPTUSDT"],
+};
+const BINANCE_SET = new Set([...BINANCE_SYMBOLS.stocks, ...BINANCE_SYMBOLS.metals]);
+
+// MEXC에 추가할 “표시 심볼” 목록(안 뜨는 6개는 원천 제거)
+const MEXC_DISPLAY = [
+  "AAPLUSDT","ACNUSDT","ADBEUSDT","AMATUSDT","AMDUSDT","AMZNUSDT","ARMUSDT","ASMLUSDT","AVGOUSDT",
+  "BABAUSDT","BACUSDT","BAUSDT",
+  "COINUSDT","CRCLUSDT","CRMUSDT","CRWDUSDT","CSCOUSDT",
+  "FUTUUSDT","GEUSDT","GOOGLUSDT","GSUSDT","IBMUSDT","INTCUSDT","INTUUSDT",
+  "JDUSDT","JNJUSDT","JPMUSDT","LLYUSDT","LRCXUSDT","MAUSDT","MCDUSDT","METAUSDT",
+  "MRVLUSDT","MSFTUSDT","MSTRUSDT","MUUSDT","NAS100USDT","NFLXUSDT","NVDAUSDT","NKEUSDT",
+  "ORCLUSDT","PANWUSDT","PEPUSDT","PLTRUSDT","PYPLUSDT","QCOMUSDT","QQQUSDT","RDDTUSDT","HOODUSDT",
+  "SHOPUSDT","SMCIUSDT","SPOTUSDT","SP500USDT","TSLAUSDT","UBERUSDT","UNHUSDT","US30USDT",
+  "VZUSDT","WMTUSDT","XOMUSDT"
+].filter(x => !DEAD_DISPLAYS.has(x));
+
+// 지수는 기존처럼 “확정 계약코드” 우선
+const INDEX_MAP = new Map([
+  ["NAS100", ["NAS100_USDT"]],
+  ["SP500",  ["SPX500_USDT","SP500_USDT"]],
+  ["US30",   ["US30_USDT"]],
+]);
+
+// 문제 종목 alias 보정(여기는 WS용 후보 생성에만 사용, UI에 남겨두지는 않음)
+const BASE_ALIASES = {
+  "KLA": ["KLAC"],
+  "NUU": ["NU"],
+  "DYA": ["DY"],
+  "CATL": ["CATL","300750"],
+  "NVDA": ["NVDA","NVIDIA"]
+};
+
+// MEXC FX derived
+const MEXC_FX_BASES = ["EUR_USDT","GBP_USDT","AUD_USDT","CAD_USDT","CHF_USDT","JPY_USDT"];
+const MEXC_FX = [
+  { base:"EURUSD", type:"FX", label:"EUR/USD", expr:{op:"DIRECT", a:"EUR_USDT"} },
+  { base:"GBPUSD", type:"FX", label:"GBP/USD", expr:{op:"DIRECT", a:"GBP_USDT"} },
+  { base:"AUDUSD", type:"FX", label:"AUD/USD", expr:{op:"DIRECT", a:"AUD_USDT"} },
+
+  { base:"USDJPY", type:"FX", label:"USD/JPY", expr:{op:"INVERT", a:"JPY_USDT"} },
+  { base:"USDCHF", type:"FX", label:"USD/CHF", expr:{op:"INVERT", a:"CHF_USDT"} },
+  { base:"USDCAD", type:"FX", label:"USD/CAD", expr:{op:"INVERT", a:"CAD_USDT"} },
+
+  { base:"GBPJPY", type:"FX", label:"GBP/JPY", expr:{op:"DIV", a:"GBP_USDT", b:"JPY_USDT"} },
+  { base:"AUDCAD", type:"FX", label:"AUD/CAD", expr:{op:"DIV", a:"AUD_USDT", b:"CAD_USDT"} },
+  { base:"EURJPY", type:"FX", label:"EUR/JPY", expr:{op:"DIV", a:"EUR_USDT", b:"JPY_USDT"} },
+  { base:"EURAUD", type:"FX", label:"EUR/AUD", expr:{op:"DIV", a:"EUR_USDT", b:"AUD_USDT"} },
+  { base:"EURGBP", type:"FX", label:"EUR/GBP", expr:{op:"DIV", a:"EUR_USDT", b:"GBP_USDT"} },
+  { base:"AUDJPY", type:"FX", label:"AUD/JPY", expr:{op:"DIV", a:"AUD_USDT", b:"JPY_USDT"} },
+];
+
+// 에너지(확정 심볼)
+const MEXC_ENERGY = [
+  { base:"USOIL", display:"USOILUSDT", type:"Energy", label:"WTI Oil", mexcSymbols:["USOIL_USDT"] },
+  { base:"UKOIL", display:"UKOILUSDT", type:"Energy", label:"Brent Oil", mexcSymbols:["UKOIL_USDT"] },
+  { base:"NGAS",  display:"NGASUSDT",  type:"Energy", label:"Natural Gas", mexcSymbols:["NGAS_USDT","NG_USDT"] },
+];
+
+// 인스트루먼트 생성(중복 없이 + dead 제거)
+const INSTRUMENTS = [];
+const usedDisplay = new Set();
+
+function addInstrument(it){
+  if(!it || !it.display) return;
+  if(DEAD_DISPLAYS.has(it.display)) return;         // ✅ 최종 방어
+  if(usedDisplay.has(it.display)) return;
+  usedDisplay.add(it.display);
+  it._order = INSTRUMENTS.length;
+  INSTRUMENTS.push(it);
+}
+
+for(const s of BINANCE_SYMBOLS.stocks){
+  addInstrument({ id:"B:"+s, ex:"BINANCE", type:"Stock", display:s, label:s.replace("USDT",""), base:s.replace("USDT",""), ws:s.toLowerCase()+"@ticker" });
+}
+for(const s of BINANCE_SYMBOLS.metals){
+  const base = s.replace("USDT","");
+  addInstrument({ id:"B:"+s, ex:"BINANCE", type:"Commodity", display:s, label:base, base, ws:s.toLowerCase()+"@ticker" });
+}
+
+// MEXC 목록(바이낸스와 겹치는 건 제거)
+const mexcFiltered = Array.from(new Set(MEXC_DISPLAY))
+  .filter(d => !BINANCE_SET.has(d))
+  .filter(d => !DEAD_DISPLAYS.has(d));
+
+for(const d of mexcFiltered){
+  const base = d.endsWith("USDT") ? d.slice(0,-4) : d;
+  let type = "Stock";
+  if(INDEX_MAP.has(base)) type = "Index";
+  if(base === "QQQ") type = "Index"; // 편의상
+  addInstrument({
+    id:"M:"+d, ex:"MEXC", type, display:d, label:base, base,
+    mexcBase: base
+  });
+}
+// 에너지 추가
+for(const e of MEXC_ENERGY){
+  addInstrument({ id:"ME:"+e.display, ex:"MEXC", type:e.type, display:e.display, label:e.label, base:e.base, mexcSymbols:e.mexcSymbols });
+}
+// FX 추가
+for(const fx of MEXC_FX){
+  addInstrument({ id:"MFX:"+fx.base, ex:"MEXC", type:"FX", display:fx.base, label:fx.label, base:fx.base, mexcFx:fx.expr });
+}
+
+/* ===== 2) UI rows ===== */
+const rows = new Map();
+const lastValue = new Map();
+const pendingRender = new Set();
+let rafScheduled = false;
+
+function buildRows(){
+  for(const it of INSTRUMENTS){
+    const row = document.createElement("div");
+    row.className = "row";
+    row.dataset.type = it.type;
+    row.dataset.order = String(it._order);
+    row.dataset.sortChg = "-999999";
+    row.dataset.sortVol = "-999999";
+    row.dataset.sortName = it.display.toUpperCase();
+
+    // 그룹/순서 키(기본정렬용)
+    let grp = 2;
+    let grpOrder = 9999;
+
+    if(it.type === "Index"){
+      grp = 0;
+      const idx = INDEX_ORDER.indexOf(it.base);
+      grpOrder = (idx >= 0) ? idx : 9999;
+    } else if(it.type === "Stock" && BIGTECH_SET.has(it.base)){
+      grp = 1;
+      grpOrder = BIGTECH_ORDER.indexOf(it.base);
+    } else {
+      grp = 2;
+      grpOrder = 9999;
+    }
+    row.dataset.grp = String(grp);
+    row.dataset.grpOrder = String(grpOrder);
+
+    const sym = document.createElement("div"); sym.className="sym";
+    const left = document.createElement("div"); left.className="left";
+
+    const code = document.createElement("div"); code.className="code"; code.textContent = it.display;
+    const meta = document.createElement("div"); meta.className="meta";
+
+    const tagPerp = document.createElement("span"); tagPerp.className="tag"; tagPerp.textContent = (it.type==="FX") ? "Derived" : "Perp";
+    const tagEx = document.createElement("span"); tagEx.className="tag ex"; tagEx.textContent = it.ex;
+    const tagType = document.createElement("span"); tagType.className="tag "+typeTagClass(it.type);
+    tagType.textContent = (it.type==="Index") ? "Index/ETF" : it.type;
+
+    const label = document.createElement("span"); label.className="muted"; label.textContent = it.label || "";
+
+    meta.appendChild(tagPerp); meta.appendChild(tagEx); meta.appendChild(tagType); meta.appendChild(label);
+    left.appendChild(code); left.appendChild(meta);
+    sym.appendChild(left);
+
+    const priceWrap = document.createElement("div");
+    priceWrap.style.display="flex"; priceWrap.style.flexDirection="column"; priceWrap.style.gap="4px";
+    priceWrap.classList.add("priceWrap");
+
+    const price = document.createElement("div"); price.className="price"; price.textContent="-";
+    const usd = document.createElement("div"); usd.className="usd"; usd.textContent="$ -";
+    priceWrap.appendChild(price); priceWrap.appendChild(usd);
+
+    const vol = document.createElement("div"); vol.className="vol"; vol.textContent="-";
+    const chg = document.createElement("div"); chg.className="chg"; chg.textContent="-";
+
+    row.appendChild(sym); row.appendChild(priceWrap); row.appendChild(vol); row.appendChild(chg);
+    grid.appendChild(row);
+
+    rows.set(it.id, { row, priceEl:price, usdEl:usd, volEl:vol, chgEl:chg, def:it });
+
+    row.addEventListener("click", () => openTradingView(it));
+  }
+}
+buildRows();
+
+/* ===== Filters + Sort ===== */
+const filterAll   = document.getElementById("filterAll");
+const filterStock = document.getElementById("filterStock");
+const filterIndex = document.getElementById("filterIndex");
+const filterFX    = document.getElementById("filterFX");
+const filterCommo = document.getElementById("filterCommo");
+const filterEnergy= document.getElementById("filterEnergy");
+
+function setFilter(mode){
+  filterAll.classList.toggle("on", mode==="ALL");
+  filterStock.classList.toggle("on", mode==="Stock");
+  filterIndex.classList.toggle("on", mode==="Index");
+  filterFX.classList.toggle("on", mode==="FX");
+  filterCommo.classList.toggle("on", mode==="Commodity");
+  filterEnergy.classList.toggle("on", mode==="Energy");
+
+  for(const {row} of rows.values()){
+    const t = row.dataset.type;
+    const show =
+      (mode==="ALL") ||
+      (mode==="Stock" && t==="Stock") ||
+      (mode==="Index" && t==="Index") ||
+      (mode==="FX" && t==="FX") ||
+      (mode==="Energy" && t==="Energy") ||
+      (mode==="Commodity" && t==="Commodity");
+    row.style.display = show ? "" : "none";
+  }
+  applySort();
+}
+filterAll.onclick    = () => setFilter("ALL");
+filterStock.onclick  = () => setFilter("Stock");
+filterIndex.onclick  = () => setFilter("Index");
+filterFX.onclick     = () => setFilter("FX");
+filterCommo.onclick  = () => setFilter("Commodity");
+filterEnergy.onclick = () => setFilter("Energy");
+
+sortSel.onchange = () => applySort();
+
+function applySort(){
+  const mode = sortSel.value;
+  const rowEls = [];
+  for(const {row} of rows.values()) rowEls.push(row);
+
+  const keyNum = (v) => {
+    const n = parseFloat(v);
+    return isFinite(n) ? n : -999999;
+  };
+
+  rowEls.sort((a,b) => {
+    if(mode === "default"){
+      const ga = keyNum(a.dataset.grp), gb = keyNum(b.dataset.grp);
+      if(ga !== gb) return ga - gb;
+      const oa = keyNum(a.dataset.grpOrder), ob = keyNum(b.dataset.grpOrder);
+      if(oa !== ob) return oa - ob;
+      return (a.dataset.sortName||"").localeCompare(b.dataset.sortName||"");
+    }
+    if(mode === "name") return (a.dataset.sortName||"").localeCompare(b.dataset.sortName||"");
+    if(mode === "chgDesc") return keyNum(b.dataset.sortChg) - keyNum(a.dataset.sortChg);
+    if(mode === "chgAsc") return keyNum(a.dataset.sortChg) - keyNum(b.dataset.sortChg);
+    if(mode === "volDesc") return keyNum(b.dataset.sortVol) - keyNum(a.dataset.sortVol);
+    if(mode === "volAsc") return keyNum(a.dataset.sortVol) - keyNum(b.dataset.sortVol);
+    return 0;
+  });
+
+  for(const r of rowEls) grid.appendChild(r);
+}
+
+/* ===== Render ===== */
+function scheduleRender(){
+  if(rafScheduled) return;
+  rafScheduled = true;
+  requestAnimationFrame(() => {
+    rafScheduled = false;
+    for(const id of pendingRender){
+      const r = rows.get(id);
+      const v = lastValue.get(id);
+      if(!r || !v) continue;
+
+      const isUp = v.pct >= 0;
+      r.priceEl.textContent = fmtPrice(v.last);
+      r.usdEl.textContent = "$ " + fmtPrice(v.last);
+      r.volEl.textContent = isFinite(v.vol) ? (fmtVol(v.vol) + " USDT") : "-";
+
+      r.chgEl.textContent = fmtPct(v.pct);
+      r.chgEl.classList.toggle("up", isUp);
+      r.chgEl.classList.toggle("down", !isUp);
+
+      r.row.dataset.sortChg = String(isFinite(v.pct) ? v.pct : -999999);
+      r.row.dataset.sortVol = String(isFinite(v.vol) ? v.vol : -999999);
+    }
+    pendingRender.clear();
+    lastAnyUpdate.textContent = nowHHMMSS();
+    applySort();
+  });
+}
+function applyUpdate(id, last, pct, vol){
+  lastValue.set(id, { last, pct, vol, ts: Date.now() });
+  pendingRender.add(id);
+  scheduleRender();
+}
+
+/* ===== Binance WS ===== */
+let wsBinance=null, binanceTimer=null, binanceBackoff=800;
+function connectBinance(){
+  if(wsBinance && (wsBinance.readyState===WebSocket.OPEN || wsBinance.readyState===WebSocket.CONNECTING)) return;
+  if(binanceTimer){ clearTimeout(binanceTimer); binanceTimer=null; }
+
+  const streams = [...BINANCE_SYMBOLS.stocks, ...BINANCE_SYMBOLS.metals].map(s => s.toLowerCase()+"@ticker").join("/");
+  const url = "wss://fstream.binance.com/stream?streams=" + streams;
+
+  setDot(dotBinance,"DEAD");
+  try{ wsBinance = new WebSocket(url); }catch(e){ queueBinanceReconnect(); return; }
+
+  wsBinance.onopen = ()=>{ binanceBackoff=800; setDot(dotBinance,"LIVE"); };
+  wsBinance.onmessage = (ev)=>{
+    try{
+      const msg = JSON.parse(ev.data);
+      const d = msg.data;
+      if(!d || !d.s) return;
+      const id = "B:"+d.s;
+      const last = parseFloat(d.c), pct=parseFloat(d.P), vol=parseFloat(d.q);
+      if(isFinite(last)) applyUpdate(id, last, pct, vol);
+    }catch(_){}
+  };
+  wsBinance.onerror = ()=>setDot(dotBinance,"DEAD");
+  wsBinance.onclose = ()=>{ setDot(dotBinance,"DEAD"); queueBinanceReconnect(); };
+}
+function queueBinanceReconnect(){
+  if(binanceTimer) return;
+  binanceTimer = setTimeout(()=> {
+    binanceTimer=null;
+    connectBinance();
+    binanceBackoff = Math.min(Math.floor(binanceBackoff*1.6), 10000);
+  }, binanceBackoff);
+}
+
+/* ===== MEXC WS ===== */
+let wsMexc=null, mexcTimer=null, mexcBackoff=800, mexcPing=null;
+const mexcSymbolToId = new Map(); // subscribedSymbol -> instrumentId
+const fxState = new Map();
+const mexcStockMap = new Map();   // base -> STOCK_USDT
+
+const CONTRACT_WARMUP_MS = 4500;
+
+function connectMexc(){
+  if(wsMexc && (wsMexc.readyState===WebSocket.OPEN || wsMexc.readyState===WebSocket.CONNECTING)) return;
+  if(mexcTimer){ clearTimeout(mexcTimer); mexcTimer=null; }
+  if(mexcPing){ clearInterval(mexcPing); mexcPing=null; }
+
+  mexcSymbolToId.clear();
+  fxState.clear();
+  mexcStockMap.clear();
+
+  setDot(dotMexc,"DEAD");
+  try{ wsMexc = new WebSocket("wss://contract.mexc.com/edge"); }
+  catch(e){ queueMexcReconnect(); return; }
+
+  wsMexc.onopen = ()=>{
+    mexcBackoff=800;
+    setDot(dotMexc,"LIVE");
+
+    mexcPing = setInterval(()=>{ try{ wsMexc.send(JSON.stringify({method:"ping"})); }catch(_){ } }, 15000);
+
+    // FX base 먼저 구독
+    for(const b of MEXC_FX_BASES){
+      mexcSubscribe(b, "__FX_BASE__");
+    }
+
+    // contract 워밍업: STOCK 계약 맵 수집
+    wsMexc.send(JSON.stringify({ method:"sub.contract", gzip:false }));
+
+    setTimeout(()=> {
+      try{ wsMexc.send(JSON.stringify({ method:"unsub.contract" })); }catch(_){}
+      subscribeMexcFinal();
+    }, CONTRACT_WARMUP_MS);
+  };
+
+  wsMexc.onmessage = (ev)=>{
+    try{
+      const msg = JSON.parse(ev.data);
+      if(!msg) return;
+
+      // 계약 스트림에서 STOCK 계약 수집
+      if(msg.channel === "push.contract" && msg.data && msg.data.symbol){
+        const sym = msg.data.symbol;
+        if(typeof sym === "string" && sym.endsWith("STOCK_USDT")){
+          const base = sym.replace("STOCK_USDT","");
+          mexcStockMap.set(base, sym);
+        }
+        return;
+      }
+
+      // 티커 스트림
+      if(msg.channel === "push.ticker" && msg.data){
+        const sym = msg.data.symbol || msg.symbol;
+        const last = parseFloat(msg.data.lastPrice);
+        const rfr  = parseFloat(msg.data.riseFallRate);
+        const pct  = isFinite(rfr) ? (rfr*100) : NaN;
+        const vol  = isFinite(parseFloat(msg.data.amount24)) ? parseFloat(msg.data.amount24)
+                  : isFinite(parseFloat(msg.data.volume24)) ? parseFloat(msg.data.volume24) : NaN;
+
+        if (MEXC_FX_BASES.includes(sym) && isFinite(last) && isFinite(rfr)){
+          fxState.set(sym, { last, rfr });
+          recomputeFx();
+        }
+
+        const id = mexcSymbolToId.get(sym);
+        if(id && id !== "__FX_BASE__" && isFinite(last)){
+          applyUpdate(id, last, pct, vol);
+        }
+      }
+    }catch(_){}
+  };
+
+  wsMexc.onerror = ()=>setDot(dotMexc,"DEAD");
+  wsMexc.onclose = ()=>{ setDot(dotMexc,"DEAD"); if(mexcPing){clearInterval(mexcPing); mexcPing=null;} queueMexcReconnect(); };
+}
+function queueMexcReconnect(){
+  if(mexcTimer) return;
+  mexcTimer = setTimeout(()=> {
+    mexcTimer=null;
+    connectMexc();
+    mexcBackoff = Math.min(Math.floor(mexcBackoff*1.6), 10000);
+  }, mexcBackoff);
+}
+
+function mexcSubscribe(symbol, id){
+  if(!wsMexc || wsMexc.readyState !== WebSocket.OPEN) return;
+  if(mexcSymbolToId.has(symbol)) return;
+  mexcSymbolToId.set(symbol, id);
+  wsMexc.send(JSON.stringify({ method:"sub.ticker", param:{symbol}, gzip:false }));
+}
+
+function baseCandidates(base){
+  const cands = [];
+  cands.push(base);
+
+  if(BASE_ALIASES[base]){
+    for(const a of BASE_ALIASES[base]) cands.push(a);
+  }
+  if(base.length >= 3 && base[base.length-1] === base[base.length-2]){
+    cands.push(base.slice(0,-1));
+  }
+  return Array.from(new Set(cands)).filter(Boolean);
+}
+
+function subscribeMexcFinal(){
+  const mexcRows = INSTRUMENTS.filter(x => x.ex === "MEXC" && (x.type==="Stock" || x.type==="Index" || x.type==="Energy"));
+
+  const queue = [];
+
+  for(const it of mexcRows){
+    // 에너지: 확정 심볼 사용
+    if(it.mexcSymbols && it.mexcSymbols.length){
+      for(const s of it.mexcSymbols) queue.push([s, it.id]);
+      continue;
+    }
+
+    // 지수: 확정 심볼 사용
+    if(it.type === "Index" && INDEX_MAP.has(it.base)){
+      for(const s of INDEX_MAP.get(it.base)) queue.push([s, it.id]);
+      continue;
+    }
+
+    // 주식/ETF: 후보 심볼 여러 개를 같은 row로 맵핑
+    const bases = baseCandidates(it.base);
+    const symbols = [];
+
+    for(const b of bases){
+      if(mexcStockMap.has(b)) symbols.push(mexcStockMap.get(b));
+      symbols.push(b + "STOCK_USDT");
+      symbols.push(b + "_USDT");
+    }
+
+    const uniq = Array.from(new Set(symbols)).slice(0, 6);
+    for(const s of uniq) queue.push([s, it.id]);
+  }
+
+  let i = 0;
+  const timer = setInterval(()=> {
+    if(!wsMexc || wsMexc.readyState !== WebSocket.OPEN){ clearInterval(timer); return; }
+    if(i >= queue.length){ clearInterval(timer); return; }
+    const [sym, id] = queue[i++];
+    mexcSubscribe(sym, id);
+  }, 18);
+}
+
+/* ===== FX derived ===== */
+function fxGet(sym){ return fxState.get(sym); }
+function fxCompute(expr){
+  if(expr.op === "DIRECT"){
+    const A = fxGet(expr.a); if(!A) return null;
+    return { last: A.last, ratio: (1 + A.rfr) };
+  }
+  if(expr.op === "INVERT"){
+    const A = fxGet(expr.a); if(!A) return null;
+    return { last: 1 / A.last, ratio: 1 / (1 + A.rfr) };
+  }
+  if(expr.op === "DIV"){
+    const A = fxGet(expr.a), B = fxGet(expr.b);
+    if(!A || !B) return null;
+    return { last: A.last / B.last, ratio: (1 + A.rfr) / (1 + B.rfr) };
+  }
+  return null;
+}
+function recomputeFx(){
+  for(const fx of MEXC_FX){
+    const out = fxCompute(fx.expr);
+    if(!out) continue;
+    const pct = (out.ratio - 1) * 100;
+    applyUpdate("MFX:"+fx.base, out.last, pct, NaN);
+  }
+}
+
+/* ===== TradingView View ===== */
+let tvLoaded = false;
+let tvWidget = null;
+
+function loadTvScript(){
+  return new Promise((resolve, reject) => {
+    if(tvLoaded && window.TradingView) return resolve();
+    const s = document.createElement("script");
+    s.src = "https://s3.tradingview.com/tv.js";
+    s.onload = () => { tvLoaded = true; resolve(); };
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+async function openTradingView(it){
+  const symbol = tvSymbolFor(it);
+
+  listView.style.display = "none";
+  tvView.style.display = "block";
+  tvTitle.textContent = `${it.display}`;
+  tvSubtitle.textContent = `${it.ex} · ${symbol}`;
+
+  tvChart.innerHTML = "";
+
+  try{
+    await loadTvScript();
+    const containerId = "tv_chart_container";
+    const c = document.createElement("div");
+    c.id = containerId;
+    c.style.width = "100%";
+    c.style.height = "100%";
+    tvChart.appendChild(c);
+
+    tvWidget = new TradingView.widget({
+      autosize: true,
+      symbol: symbol,
+      interval: "1",
+      timezone: "Asia/Seoul",
+      theme: "dark",
+      style: "1",
+      locale: "kr",
+      allow_symbol_change: true,
+      hide_top_toolbar: false,
+      hide_legend: false,
+      withdateranges: true,
+      details: true,
+      container_id: containerId
+    });
+  }catch(e){
+    tvChart.innerHTML = `<div style="padding:16px;color:#93a4c7;">
+      TradingView 로드 실패. 아래 링크로 열어봐:<br/>
+      <a href="https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}" target="_blank" style="color:#e6eefc">TradingView에서 열기</a>
+    </div>`;
+  }
+}
+
+function goBack(){
+  tvView.style.display = "none";
+  listView.style.display = "block";
+}
+document.getElementById("backBtn").onclick = goBack;
+window.addEventListener("keydown", (e)=>{ if(e.key === "Escape" && tvView.style.display === "block") goBack(); });
+
+/* ===== Reconnect + Start ===== */
+function closeAll(){
+  try{ wsBinance && wsBinance.close(); }catch(_){}
+  try{ wsMexc && wsMexc.close(); }catch(_){}
+  wsBinance = wsMexc = null;
+  if(mexcPing){ clearInterval(mexcPing); mexcPing=null; }
+  setDot(dotBinance,"DEAD");
+  setDot(dotMexc,"DEAD");
+}
+document.getElementById("reconnectBtn").onclick = ()=> {
+  closeAll();
+  lastValue.clear();
+  pendingRender.clear();
+  connectBinance();
+  connectMexc();
+};
+
+window.addEventListener("visibilitychange", ()=> {
+  if(!document.hidden){
+    if(!wsBinance || wsBinance.readyState !== WebSocket.OPEN) connectBinance();
+    if(!wsMexc || wsMexc.readyState !== WebSocket.OPEN) connectMexc();
+  }
+});
+
+/* ===== Start ===== */
+connectBinance();
+connectMexc();
+applySort();
+</script>
+</body>
+</html>
