@@ -728,7 +728,10 @@ function connectMexc(){
 
         const id = mexcSymbolToId.get(sym);
         if(id && id !== "__FX_BASE__" && isFinite(last)){
-          applyUpdate(id, last, NaN, vol, NaN);
+          const dayOpen = isFinite(parseFloat(msg.data.openPrice)) ? parseFloat(msg.data.openPrice)
+                        : isFinite(parseFloat(msg.data.open)) ? parseFloat(msg.data.open) : NaN;
+          const preferDaily = (isFinite(dayOpen) && dayOpen > 0) || dailyOpenById.has(id);
+          applyUpdate(id, last, preferDaily ? NaN : pct, vol, dayOpen);
         }
       }
     }catch(_){}
