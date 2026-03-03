@@ -150,7 +150,7 @@
         <div>종목</div>
         <div class="muted">Last Price</div>
         <div class="muted" style="justify-self:end;">Vol(24h)</div>
-        <div class="muted" style="justify-self:end;">Change(24h)</div>
+        <div class="muted" style="justify-self:end;">Change(일봉)</div>
       </div>
     </div>
 
@@ -271,6 +271,8 @@ const DEAD_DISPLAYS = new Set([
    - Binance: 너가 캡처로 확인한 TradFi 종목만
    - MEXC: Binance에 없는 애들 + FX/지수/에너지
 */
+const METAL_KR_LABELS = { XAU: "금", XAG: "은", XPT: "백금", XPD: "팔라듐" };
+
 const BINANCE_SYMBOLS = {
   stocks: ["CRCLUSDT","MSTRUSDT","HOODUSDT","PLTRUSDT","COINUSDT","TSLAUSDT","AMZNUSDT","INTCUSDT"],
   metals: ["XAUUSDT","XAGUSDT","XPDUSDT","XPTUSDT"],
@@ -350,7 +352,7 @@ for(const s of BINANCE_SYMBOLS.stocks){
 }
 for(const s of BINANCE_SYMBOLS.metals){
   const base = s.replace("USDT","");
-  addInstrument({ id:"B:"+s, ex:"BINANCE", type:"Commodity", display:s, label:base, base, ws:s.toLowerCase()+"@ticker" });
+  addInstrument({ id:"B:"+s, ex:"BINANCE", type:"Commodity", display:s, label:base, subLabel: METAL_KR_LABELS[base] || "", base, ws:s.toLowerCase()+"@ticker" });
 }
 
 // MEXC 목록(바이낸스와 겹치는 건 제거)
@@ -380,6 +382,7 @@ for(const fx of MEXC_FX){
 /* ===== 2) UI rows ===== */
 const rows = new Map();
 const lastValue = new Map();
+const dailyOpenById = new Map();
 const pendingRender = new Set();
 let rafScheduled = false;
 
@@ -423,8 +426,10 @@ function buildRows(){
     tagType.textContent = (it.type==="Index") ? "Index/ETF" : it.type;
 
     const label = document.createElement("span"); label.className="muted"; label.textContent = it.label || "";
+    const subLabel = document.createElement("span"); subLabel.className="muted"; subLabel.textContent = it.subLabel ? `(${it.subLabel})` : "";
 
     meta.appendChild(tagPerp); meta.appendChild(tagEx); meta.appendChild(tagType); meta.appendChild(label);
+    if(it.subLabel) meta.appendChild(subLabel);
     left.appendChild(code); left.appendChild(meta);
     sym.appendChild(left);
 
@@ -544,8 +549,17 @@ function scheduleRender(){
     applySort();
   });
 }
-function applyUpdate(id, last, pct, vol){
-  lastValue.set(id, { last, pct, vol, ts: Date.now() });
+function resolvePct(id, last, fallbackPct, dayOpen){
+  if(isFinite(dayOpen) && dayOpen > 0) dailyOpenById.set(id, dayOpen);
+  const refOpen = dailyOpenById.get(id);
+  if(isFinite(refOpen) && refOpen > 0 && isFinite(last)){
+    return ((last / refOpen) - 1) * 100;
+  }
+  return fallbackPct;
+}
+function applyUpdate(id, last, pct, vol, dayOpen){
+  const resolvedPct = resolvePct(id, last, pct, dayOpen);
+  lastValue.set(id, { last, pct: resolvedPct, vol, ts: Date.now() });
   pendingRender.add(id);
   scheduleRender();
 }
@@ -556,7 +570,8 @@ function connectBinance(){
   if(wsBinance && (wsBinance.readyState===WebSocket.OPEN || wsBinance.readyState===WebSocket.CONNECTING)) return;
   if(binanceTimer){ clearTimeout(binanceTimer); binanceTimer=null; }
 
-  const streams = [...BINANCE_SYMBOLS.stocks, ...BINANCE_SYMBOLS.metals].map(s => s.toLowerCase()+"@ticker").join("/");
+  const bases = [...BINANCE_SYMBOLS.stocks, ...BINANCE_SYMBOLS.metals];
+  const streams = bases.flatMap(s => [s.toLowerCase()+"@ticker", s.toLowerCase()+"@kline_1d"]).join("/");
   const url = "wss://fstream.binance.com/stream?streams=" + streams;
 
   setDot(dotBinance,"DEAD");
@@ -566,8 +581,18 @@ function connectBinance(){
   wsBinance.onmessage = (ev)=>{
     try{
       const msg = JSON.parse(ev.data);
+      const stream = msg.stream || "";
       const d = msg.data;
-      if(!d || !d.s) return;
+      if(!d) return;
+
+      if(stream.endsWith("@kline_1d") && d.k && d.k.s){
+        const id = "B:" + d.k.s;
+        const dayOpen = parseFloat(d.k.o);
+        if(isFinite(dayOpen) && dayOpen > 0) dailyOpenById.set(id, dayOpen);
+        return;
+      }
+
+      if(!d.s) return;
       const id = "B:"+d.s;
       const last = parseFloat(d.c), pct=parseFloat(d.P), vol=parseFloat(d.q);
       if(isFinite(last)) applyUpdate(id, last, pct, vol);
@@ -588,17 +613,56 @@ function queueBinanceReconnect(){
 /* ===== MEXC WS ===== */
 let wsMexc=null, mexcTimer=null, mexcBackoff=800, mexcPing=null;
 const mexcSymbolToId = new Map(); // subscribedSymbol -> instrumentId
+const mexcKlineSubscribed = new Set();
 const fxState = new Map();
 const mexcStockMap = new Map();   // base -> STOCK_USDT
 
 const CONTRACT_WARMUP_MS = 4500;
 
+
+function updateDailyOpenFromMexc(symbol, dayOpen){
+  if(!symbol || !isFinite(dayOpen) || dayOpen <= 0) return;
+  const id = mexcSymbolToId.get(symbol);
+  if(!id || id === "__FX_BASE__") return;
+  dailyOpenById.set(id, dayOpen);
+
+  const prev = lastValue.get(id);
+  if(prev && isFinite(prev.last)){
+    applyUpdate(id, prev.last, prev.pct, prev.vol, dayOpen);
+  }
+}
+
+function parseMexcKline(msg){
+  const raw = msg?.data;
+  if(!raw) return { symbol:null, dayOpen:NaN };
+
+  const pick = (obj) => {
+    if(!obj || typeof obj !== "object") return null;
+    return obj;
+  };
+
+  let item = null;
+  if(Array.isArray(raw)) item = pick(raw[raw.length - 1]);
+  else if(Array.isArray(raw.data)) item = pick(raw.data[raw.data.length - 1]);
+  else item = pick(raw);
+
+  if(!item) return { symbol:null, dayOpen:NaN };
+
+  const symbol = item.symbol || item.s || raw.symbol || msg.symbol || null;
+  const dayOpen = isFinite(parseFloat(item.open)) ? parseFloat(item.open)
+                : isFinite(parseFloat(item.o)) ? parseFloat(item.o)
+                : Array.isArray(item) && isFinite(parseFloat(item[1])) ? parseFloat(item[1])
+                : NaN;
+
+  return { symbol, dayOpen };
+}
 function connectMexc(){
   if(wsMexc && (wsMexc.readyState===WebSocket.OPEN || wsMexc.readyState===WebSocket.CONNECTING)) return;
   if(mexcTimer){ clearTimeout(mexcTimer); mexcTimer=null; }
   if(mexcPing){ clearInterval(mexcPing); mexcPing=null; }
 
   mexcSymbolToId.clear();
+  mexcKlineSubscribed.clear();
   fxState.clear();
   mexcStockMap.clear();
 
@@ -641,6 +705,13 @@ function connectMexc(){
         return;
       }
 
+      // 일봉 캔들 스트림(기준가 확보)
+      if(typeof msg.channel === "string" && msg.channel.startsWith("push.kline")) {
+        const { symbol, dayOpen } = parseMexcKline(msg);
+        updateDailyOpenFromMexc(symbol, dayOpen);
+        return;
+      }
+
       // 티커 스트림
       if(msg.channel === "push.ticker" && msg.data){
         const sym = msg.data.symbol || msg.symbol;
@@ -657,7 +728,7 @@ function connectMexc(){
 
         const id = mexcSymbolToId.get(sym);
         if(id && id !== "__FX_BASE__" && isFinite(last)){
-          applyUpdate(id, last, pct, vol);
+          applyUpdate(id, last, NaN, vol, NaN);
         }
       }
     }catch(_){}
@@ -680,6 +751,11 @@ function mexcSubscribe(symbol, id){
   if(mexcSymbolToId.has(symbol)) return;
   mexcSymbolToId.set(symbol, id);
   wsMexc.send(JSON.stringify({ method:"sub.ticker", param:{symbol}, gzip:false }));
+
+  if(!mexcKlineSubscribed.has(symbol)){
+    mexcKlineSubscribed.add(symbol);
+    wsMexc.send(JSON.stringify({ method:"sub.kline", param:{ symbol, interval:"Day1" }, gzip:false }));
+  }
 }
 
 function baseCandidates(base){
@@ -759,7 +835,7 @@ function recomputeFx(){
     const out = fxCompute(fx.expr);
     if(!out) continue;
     const pct = (out.ratio - 1) * 100;
-    applyUpdate("MFX:"+fx.base, out.last, pct, NaN);
+    applyUpdate("MFX:"+fx.base, out.last, pct, NaN, NaN);
   }
 }
 
