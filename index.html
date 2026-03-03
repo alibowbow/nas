@@ -155,7 +155,8 @@
     </div>
 
     <div class="note">
-      MEXC 주식 선물은 WS 구독용 심볼이 <span class="muted">AAPLSTOCK_USDT</span> 같은 형태인 경우가 많아(워밍업 후 자동 매핑).
+      MEXC 주식 선물은 WS 구독용 심볼이 <span class="muted">AAPLSTOCK_USDT</span> 같은 형태인 경우가 많아(워밍업 후 자동 매핑).<br/>
+      Change(일봉)은 MEXC의 Day1 캔들 시가 기준으로 계산됨(시가 수신 전엔 '-' 표시).
     </div>
   </div>
 
@@ -243,22 +244,15 @@ function ensurePerpDotP(sym){
   return sym.endsWith(".P") ? sym : (sym + ".P");
 }
 function tvSymbolFor(it){
-  // FX는 거래소 티커가 아니라 통상 브로커 심볼이 표준이라 그대로 유지
   if(it.type === "FX"){
     return "OANDA:" + it.base; // e.g. EURUSD
   }
-
-  // ✅ 핵심: “Stock은 NASDAQ:AAA 이런 식” 절대 쓰지 않음
   if(it.ex === "BINANCE"){
-    // 바이낸스 TradFi는 TV에서 .P로 잡히는 케이스가 일반적
     return "BINANCE:" + ensurePerpDotP(it.display);
   }
   if(it.ex === "MEXC"){
-    // mexc는 display를 그대로 쓰고 .P만 붙여 시도
     return "MEXC:" + ensurePerpDotP(it.display);
   }
-
-  // 그 외(혹시)
   return it.display;
 }
 
@@ -279,7 +273,6 @@ const BINANCE_SYMBOLS = {
 };
 const BINANCE_SET = new Set([...BINANCE_SYMBOLS.stocks, ...BINANCE_SYMBOLS.metals]);
 
-// MEXC에 추가할 “표시 심볼” 목록(안 뜨는 6개는 원천 제거)
 const MEXC_DISPLAY = [
   "AAPLUSDT","ACNUSDT","ADBEUSDT","AMATUSDT","AMDUSDT","AMZNUSDT","ARMUSDT","ASMLUSDT","AVGOUSDT",
   "BABAUSDT","BACUSDT","BAUSDT",
@@ -292,14 +285,12 @@ const MEXC_DISPLAY = [
   "VZUSDT","WMTUSDT","XOMUSDT"
 ].filter(x => !DEAD_DISPLAYS.has(x));
 
-// 지수는 기존처럼 “확정 계약코드” 우선
 const INDEX_MAP = new Map([
   ["NAS100", ["NAS100_USDT"]],
   ["SP500",  ["SPX500_USDT","SP500_USDT"]],
   ["US30",   ["US30_USDT"]],
 ]);
 
-// 문제 종목 alias 보정(여기는 WS용 후보 생성에만 사용, UI에 남겨두지는 않음)
 const BASE_ALIASES = {
   "KLA": ["KLAC"],
   "NUU": ["NU"],
@@ -340,7 +331,7 @@ const usedDisplay = new Set();
 
 function addInstrument(it){
   if(!it || !it.display) return;
-  if(DEAD_DISPLAYS.has(it.display)) return;         // ✅ 최종 방어
+  if(DEAD_DISPLAYS.has(it.display)) return;
   if(usedDisplay.has(it.display)) return;
   usedDisplay.add(it.display);
   it._order = INSTRUMENTS.length;
@@ -355,7 +346,6 @@ for(const s of BINANCE_SYMBOLS.metals){
   addInstrument({ id:"B:"+s, ex:"BINANCE", type:"Commodity", display:s, label:base, subLabel: METAL_KR_LABELS[base] || "", base, ws:s.toLowerCase()+"@ticker" });
 }
 
-// MEXC 목록(바이낸스와 겹치는 건 제거)
 const mexcFiltered = Array.from(new Set(MEXC_DISPLAY))
   .filter(d => !BINANCE_SET.has(d))
   .filter(d => !DEAD_DISPLAYS.has(d));
@@ -364,17 +354,15 @@ for(const d of mexcFiltered){
   const base = d.endsWith("USDT") ? d.slice(0,-4) : d;
   let type = "Stock";
   if(INDEX_MAP.has(base)) type = "Index";
-  if(base === "QQQ") type = "Index"; // 편의상
+  if(base === "QQQ") type = "Index";
   addInstrument({
     id:"M:"+d, ex:"MEXC", type, display:d, label:base, base,
     mexcBase: base
   });
 }
-// 에너지 추가
 for(const e of MEXC_ENERGY){
   addInstrument({ id:"ME:"+e.display, ex:"MEXC", type:e.type, display:e.display, label:e.label, base:e.base, mexcSymbols:e.mexcSymbols });
 }
-// FX 추가
 for(const fx of MEXC_FX){
   addInstrument({ id:"MFX:"+fx.base, ex:"MEXC", type:"FX", display:fx.base, label:fx.label, base:fx.base, mexcFx:fx.expr });
 }
@@ -396,7 +384,6 @@ function buildRows(){
     row.dataset.sortVol = "-999999";
     row.dataset.sortName = it.display.toUpperCase();
 
-    // 그룹/순서 키(기본정렬용)
     let grp = 2;
     let grpOrder = 9999;
 
@@ -549,14 +536,20 @@ function scheduleRender(){
     applySort();
   });
 }
+
 function resolvePct(id, last, fallbackPct, dayOpen){
+  // dayOpen이 유효하면 저장
   if(isFinite(dayOpen) && dayOpen > 0) dailyOpenById.set(id, dayOpen);
+
   const refOpen = dailyOpenById.get(id);
+  // ✅ 일봉 시가가 있으면 "일봉 기준"으로 계산
   if(isFinite(refOpen) && refOpen > 0 && isFinite(last)){
     return ((last / refOpen) - 1) * 100;
   }
-  return fallbackPct;
+  // ✅ 일봉 시가가 없으면 fallback도 쓰지 않고 '-'로(=NaN)
+  return NaN;
 }
+
 function applyUpdate(id, last, pct, vol, dayOpen){
   const resolvedPct = resolvePct(id, last, pct, dayOpen);
   lastValue.set(id, { last, pct: resolvedPct, vol, ts: Date.now() });
@@ -612,9 +605,13 @@ function queueBinanceReconnect(){
 
 /* ===== MEXC WS ===== */
 let wsMexc=null, mexcTimer=null, mexcBackoff=800, mexcPing=null;
-const mexcSymbolToId = new Map(); // subscribedSymbol -> instrumentId
+const mexcSymbolToId = new Map(); // subscribedSymbol -> instrumentId (ticker)
 const fxState = new Map();
 const mexcStockMap = new Map();   // base -> STOCK_USDT
+
+// ✅ Day1 kline 매핑
+const mexcKlineToIds = new Map();     // symbol -> Set(instrumentId)
+const mexcKlineSubscribed = new Set(); // symbol already sub.kline Day1
 
 const CONTRACT_WARMUP_MS = 4500;
 
@@ -626,6 +623,8 @@ function connectMexc(){
   mexcSymbolToId.clear();
   fxState.clear();
   mexcStockMap.clear();
+  mexcKlineToIds.clear();
+  mexcKlineSubscribed.clear();
 
   setDot(dotMexc,"DEAD");
   try{ wsMexc = new WebSocket("wss://contract.mexc.com/edge"); }
@@ -666,14 +665,39 @@ function connectMexc(){
         return;
       }
 
-      // 티커 스트림
+      // ✅ Day1 kline에서 일봉 시가 확보 (변동률 계산용)
+      if(msg.channel === "push.kline" && msg.data && msg.data.symbol){
+        const sym = msg.data.symbol;
+        const interval = msg.data.interval;
+
+        if(interval === "Day1"){
+          const dayOpen = parseFloat(msg.data.ro ?? msg.data.o);
+          if(isFinite(dayOpen) && dayOpen > 0){
+            const ids = mexcKlineToIds.get(sym);
+            if(ids){
+              for(const id of ids){
+                dailyOpenById.set(id, dayOpen);
+
+                // 이미 last가 있으면 즉시 변동률 재계산
+                const cur = lastValue.get(id);
+                if(cur && isFinite(cur.last)){
+                  applyUpdate(id, cur.last, NaN, cur.vol, dayOpen);
+                }
+              }
+            }
+          }
+        }
+        return;
+      }
+
+      // 티커 스트림(여기 riseFallRate는 24h라서 "일봉"엔 사용 안 함)
       if(msg.channel === "push.ticker" && msg.data){
         const sym = msg.data.symbol || msg.symbol;
         const last = parseFloat(msg.data.lastPrice);
+
         const rfr  = parseFloat(msg.data.riseFallRate);
-        const pct  = isFinite(rfr) ? (rfr*100) : NaN;
-        const dayOpen = isFinite(parseFloat(msg.data.openPrice)) ? parseFloat(msg.data.openPrice)
-                      : isFinite(parseFloat(msg.data.open)) ? parseFloat(msg.data.open) : NaN;
+        const pct24h  = isFinite(rfr) ? (rfr*100) : NaN;
+
         const vol  = isFinite(parseFloat(msg.data.amount24)) ? parseFloat(msg.data.amount24)
                   : isFinite(parseFloat(msg.data.volume24)) ? parseFloat(msg.data.volume24) : NaN;
 
@@ -684,7 +708,9 @@ function connectMexc(){
 
         const id = mexcSymbolToId.get(sym);
         if(id && id !== "__FX_BASE__" && isFinite(last)){
-          applyUpdate(id, last, pct, vol, dayOpen);
+          // dayOpen은 Day1 kline에서만 저장해서 일봉 기준으로 계산
+          // 일봉 시가 수신 전에는 resolvePct()가 NaN을 반환 => UI에 '-' 표시
+          applyUpdate(id, last, pct24h, vol, NaN);
         }
       }
     }catch(_){}
@@ -704,9 +730,23 @@ function queueMexcReconnect(){
 
 function mexcSubscribe(symbol, id){
   if(!wsMexc || wsMexc.readyState !== WebSocket.OPEN) return;
-  if(mexcSymbolToId.has(symbol)) return;
-  mexcSymbolToId.set(symbol, id);
-  wsMexc.send(JSON.stringify({ method:"sub.ticker", param:{symbol}, gzip:false }));
+
+  // ticker 중복 구독 방지
+  if(!mexcSymbolToId.has(symbol)){
+    mexcSymbolToId.set(symbol, id);
+    wsMexc.send(JSON.stringify({ method:"sub.ticker", param:{symbol}, gzip:false }));
+  }
+
+  // ✅ Day1 kline도 구독(일봉 시가 얻기)
+  if(id !== "__FX_BASE__"){
+    if(!mexcKlineToIds.has(symbol)) mexcKlineToIds.set(symbol, new Set());
+    mexcKlineToIds.get(symbol).add(id);
+
+    if(!mexcKlineSubscribed.has(symbol)){
+      mexcKlineSubscribed.add(symbol);
+      wsMexc.send(JSON.stringify({ method:"sub.kline", param:{symbol, interval:"Day1"}, gzip:false }));
+    }
+  }
 }
 
 function baseCandidates(base){
@@ -728,19 +768,16 @@ function subscribeMexcFinal(){
   const queue = [];
 
   for(const it of mexcRows){
-    // 에너지: 확정 심볼 사용
     if(it.mexcSymbols && it.mexcSymbols.length){
       for(const s of it.mexcSymbols) queue.push([s, it.id]);
       continue;
     }
 
-    // 지수: 확정 심볼 사용
     if(it.type === "Index" && INDEX_MAP.has(it.base)){
       for(const s of INDEX_MAP.get(it.base)) queue.push([s, it.id]);
       continue;
     }
 
-    // 주식/ETF: 후보 심볼 여러 개를 같은 row로 맵핑
     const bases = baseCandidates(it.base);
     const symbols = [];
 
@@ -867,6 +904,7 @@ document.getElementById("reconnectBtn").onclick = ()=> {
   closeAll();
   lastValue.clear();
   pendingRender.clear();
+  dailyOpenById.clear();
   connectBinance();
   connectMexc();
 };
