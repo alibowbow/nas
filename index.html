@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>TradFi Live (Binance + MEXC)</title>
+  <title>TradFi + Crypto Live (Binance + MEXC)</title>
   <style>
     :root{
       --bg:#0b1220; --card:#0f1a2e; --card2:#0d1628;
@@ -61,6 +61,7 @@
     .sym .meta{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12.5px;flex-wrap:wrap}
     .tag{font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--line);background: rgba(31,42,68,.6);color:var(--muted);}
     .tag.stock{color:#ffd670;border-color:rgba(255,214,112,.2);background:rgba(255,214,112,.08)}
+    .tag.crypto{color:#67e8f9;border-color:rgba(103,232,249,.24);background:rgba(103,232,249,.08)}
     .tag.index{color:#c4b5fd;border-color:rgba(196,181,253,.22);background:rgba(196,181,253,.08)}
     .tag.fx{color:#93c5fd;border-color:rgba(147,197,253,.22);background:rgba(147,197,253,.08)}
     .tag.commo{color:#a7f3d0;border-color:rgba(167,243,208,.2);background:rgba(167,243,208,.08)}
@@ -107,9 +108,9 @@
   <div id="listView">
     <div class="top">
       <div class="title">
-        <h1>TradFi Live (Binance + MEXC)</h1>
+        <h1>TradFi + Crypto Live (Binance + MEXC)</h1>
         <div class="sub">
-          기본정렬: 지수 → 빅테크 → 나머지 · 행 클릭하면 TradingView 차트로 전환(뒤로 가능)
+          기본정렬: 지수 → 크립토 메이저 → 빅테크 → 나머지 · 행 클릭하면 TradingView 차트로 전환(뒤로 가능)
         </div>
       </div>
 
@@ -125,6 +126,7 @@
 
       <div class="filters">
         <div class="pill on" id="filterAll">전체</div>
+        <div class="pill" id="filterCrypto">크립토</div>
         <div class="pill" id="filterStock">주식</div>
         <div class="pill" id="filterIndex">지수/ETF</div>
         <div class="pill" id="filterFX">FX</div>
@@ -223,6 +225,7 @@ const fmtPct = (n) => {
   return sign + n.toFixed(2) + "%";
 };
 function typeTagClass(type){
+  if(type==="Crypto") return "crypto";
   if(type==="Stock") return "stock";
   if(type==="Index") return "index";
   if(type==="FX") return "fx";
@@ -232,6 +235,8 @@ function typeTagClass(type){
 
 /* ===== 기본정렬 그룹 정의 ===== */
 const INDEX_ORDER = ["NAS100","SP500","US30","QQQ","NIKKEI225"];
+const CRYPTO_ORDER = ["BTC","ETH","SOL","XRP","BNB","DOGE"];
+const CRYPTO_SET = new Set(CRYPTO_ORDER);
 const BIGTECH_ORDER = ["AAPL","MSFT","AMZN","NVDA","GOOGL","META","TSLA","ORCL","AMD","INTC"];
 const BIGTECH_SET = new Set(BIGTECH_ORDER);
 
@@ -268,10 +273,11 @@ const DEAD_DISPLAYS = new Set([
 const METAL_KR_LABELS = { XAU: "금", XAG: "은", XPT: "백금", XPD: "팔라듐" };
 
 const BINANCE_SYMBOLS = {
+  crypto: ["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","BNBUSDT","DOGEUSDT"],
   stocks: ["CRCLUSDT","MSTRUSDT","HOODUSDT","PLTRUSDT","COINUSDT","TSLAUSDT","AMZNUSDT","INTCUSDT"],
   metals: ["XAUUSDT","XAGUSDT","XPDUSDT","XPTUSDT"],
 };
-const BINANCE_SET = new Set([...BINANCE_SYMBOLS.stocks, ...BINANCE_SYMBOLS.metals]);
+const BINANCE_SET = new Set([...BINANCE_SYMBOLS.crypto, ...BINANCE_SYMBOLS.stocks, ...BINANCE_SYMBOLS.metals]);
 
 const MEXC_DISPLAY = [
   "AAPLUSDT","ACNUSDT","ADBEUSDT","AMATUSDT","AMDUSDT","AMZNUSDT","ARMUSDT","ASMLUSDT","AVGOUSDT",
@@ -338,6 +344,9 @@ function addInstrument(it){
   INSTRUMENTS.push(it);
 }
 
+for(const s of BINANCE_SYMBOLS.crypto){
+  addInstrument({ id:"B:"+s, ex:"BINANCE", type:"Crypto", display:s, label:s.replace("USDT",""), base:s.replace("USDT",""), ws:s.toLowerCase()+"@ticker" });
+}
 for(const s of BINANCE_SYMBOLS.stocks){
   addInstrument({ id:"B:"+s, ex:"BINANCE", type:"Stock", display:s, label:s.replace("USDT",""), base:s.replace("USDT",""), ws:s.toLowerCase()+"@ticker" });
 }
@@ -384,18 +393,21 @@ function buildRows(){
     row.dataset.sortVol = "-999999";
     row.dataset.sortName = it.display.toUpperCase();
 
-    let grp = 2;
+    let grp = 3;
     let grpOrder = 9999;
 
     if(it.type === "Index"){
       grp = 0;
       const idx = INDEX_ORDER.indexOf(it.base);
       grpOrder = (idx >= 0) ? idx : 9999;
-    } else if(it.type === "Stock" && BIGTECH_SET.has(it.base)){
+    } else if(it.type === "Crypto" && CRYPTO_SET.has(it.base)){
       grp = 1;
+      grpOrder = CRYPTO_ORDER.indexOf(it.base);
+    } else if(it.type === "Stock" && BIGTECH_SET.has(it.base)){
+      grp = 2;
       grpOrder = BIGTECH_ORDER.indexOf(it.base);
     } else {
-      grp = 2;
+      grp = 3;
       grpOrder = 9999;
     }
     row.dataset.grp = String(grp);
@@ -443,6 +455,7 @@ buildRows();
 
 /* ===== Filters + Sort ===== */
 const filterAll   = document.getElementById("filterAll");
+const filterCrypto= document.getElementById("filterCrypto");
 const filterStock = document.getElementById("filterStock");
 const filterIndex = document.getElementById("filterIndex");
 const filterFX    = document.getElementById("filterFX");
@@ -451,6 +464,7 @@ const filterEnergy= document.getElementById("filterEnergy");
 
 function setFilter(mode){
   filterAll.classList.toggle("on", mode==="ALL");
+  filterCrypto.classList.toggle("on", mode==="Crypto");
   filterStock.classList.toggle("on", mode==="Stock");
   filterIndex.classList.toggle("on", mode==="Index");
   filterFX.classList.toggle("on", mode==="FX");
@@ -461,6 +475,7 @@ function setFilter(mode){
     const t = row.dataset.type;
     const show =
       (mode==="ALL") ||
+      (mode==="Crypto" && t==="Crypto") ||
       (mode==="Stock" && t==="Stock") ||
       (mode==="Index" && t==="Index") ||
       (mode==="FX" && t==="FX") ||
@@ -471,6 +486,7 @@ function setFilter(mode){
   applySort();
 }
 filterAll.onclick    = () => setFilter("ALL");
+filterCrypto.onclick = () => setFilter("Crypto");
 filterStock.onclick  = () => setFilter("Stock");
 filterIndex.onclick  = () => setFilter("Index");
 filterFX.onclick     = () => setFilter("FX");
@@ -563,7 +579,7 @@ function connectBinance(){
   if(wsBinance && (wsBinance.readyState===WebSocket.OPEN || wsBinance.readyState===WebSocket.CONNECTING)) return;
   if(binanceTimer){ clearTimeout(binanceTimer); binanceTimer=null; }
 
-  const bases = [...BINANCE_SYMBOLS.stocks, ...BINANCE_SYMBOLS.metals];
+  const bases = [...BINANCE_SYMBOLS.crypto, ...BINANCE_SYMBOLS.stocks, ...BINANCE_SYMBOLS.metals];
   const streams = bases.flatMap(s => [s.toLowerCase()+"@ticker", s.toLowerCase()+"@kline_1d"]).join("/");
   const url = "wss://fstream.binance.com/stream?streams=" + streams;
 
@@ -923,3 +939,5 @@ applySort();
 </script>
 </body>
 </html>
+
+
