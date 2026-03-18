@@ -250,6 +250,7 @@ function ensurePerpDotP(sym){
 }
 function tvSymbolFor(it){
   if(it.type === "FX"){
+    if(it.base === "USDKRW") return "FX_IDC:USDKRW";
     return "OANDA:" + it.base; // e.g. EURUSD
   }
   if(it.ex === "BINANCE"){
