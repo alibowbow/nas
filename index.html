@@ -250,6 +250,7 @@ function ensurePerpDotP(sym){
 }
 function tvSymbolFor(it){
   if(it.type === "FX"){
+    if(it.base === "USDKRW") return "FX_IDC:USDKRW";
     return "OANDA:" + it.base; // e.g. EURUSD
   }
   if(it.ex === "BINANCE"){
@@ -270,14 +271,15 @@ const DEAD_DISPLAYS = new Set([
    - Binance: 너가 캡처로 확인한 TradFi 종목만
    - MEXC: Binance에 없는 애들 + FX/지수/에너지
 */
-const METAL_KR_LABELS = { XAU: "금", XAG: "은", XPT: "백금", XPD: "팔라듐" };
+const METAL_KR_LABELS = { XAU: "금", XAG: "은", XPT: "백금", XPD: "팔라듐", COPPER: "구리" };
 
 const BINANCE_SYMBOLS = {
   crypto: ["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","BNBUSDT","DOGEUSDT"],
   stocks: ["CRCLUSDT","MSTRUSDT","HOODUSDT","PLTRUSDT","COINUSDT","TSLAUSDT","AMZNUSDT","INTCUSDT"],
-  metals: ["XAUUSDT","XAGUSDT","XPDUSDT","XPTUSDT"],
+  indexes: ["EWYUSDT"],
+  metals: ["XAUUSDT","XAGUSDT","XPDUSDT","XPTUSDT","COPPERUSDT"],
 };
-const BINANCE_SET = new Set([...BINANCE_SYMBOLS.crypto, ...BINANCE_SYMBOLS.stocks, ...BINANCE_SYMBOLS.metals]);
+const BINANCE_SET = new Set([...BINANCE_SYMBOLS.crypto, ...BINANCE_SYMBOLS.stocks, ...BINANCE_SYMBOLS.indexes, ...BINANCE_SYMBOLS.metals]);
 
 const MEXC_DISPLAY = [
   "AAPLUSDT","ACNUSDT","ADBEUSDT","AMATUSDT","AMDUSDT","AMZNUSDT","ARMUSDT","ASMLUSDT","AVGOUSDT",
@@ -306,6 +308,10 @@ const BASE_ALIASES = {
 };
 
 // MEXC FX derived
+const FRANKFURTER_FX = [
+  { id:"FFX:USDKRW", ex:"FRANKFURTER", type:"FX", display:"USDKRW", label:"USD/KRW", base:"USDKRW" },
+];
+const FRANKFURTER_POLL_MS = 60000;
 const MEXC_FX_BASES = ["EUR_USDT","GBP_USDT","AUD_USDT","CAD_USDT","CHF_USDT","JPY_USDT"];
 const MEXC_FX = [
   { base:"EURUSD", type:"FX", label:"EUR/USD", expr:{op:"DIRECT", a:"EUR_USDT"} },
@@ -350,6 +356,9 @@ for(const s of BINANCE_SYMBOLS.crypto){
 for(const s of BINANCE_SYMBOLS.stocks){
   addInstrument({ id:"B:"+s, ex:"BINANCE", type:"Stock", display:s, label:s.replace("USDT",""), base:s.replace("USDT",""), ws:s.toLowerCase()+"@ticker" });
 }
+for(const s of BINANCE_SYMBOLS.indexes){
+  addInstrument({ id:"B:"+s, ex:"BINANCE", type:"Index", display:s, label:s.replace("USDT",""), base:s.replace("USDT",""), ws:s.toLowerCase()+"@ticker" });
+}
 for(const s of BINANCE_SYMBOLS.metals){
   const base = s.replace("USDT","");
   addInstrument({ id:"B:"+s, ex:"BINANCE", type:"Commodity", display:s, label:base, subLabel: METAL_KR_LABELS[base] || "", base, ws:s.toLowerCase()+"@ticker" });
@@ -374,6 +383,9 @@ for(const e of MEXC_ENERGY){
 }
 for(const fx of MEXC_FX){
   addInstrument({ id:"MFX:"+fx.base, ex:"MEXC", type:"FX", display:fx.base, label:fx.label, base:fx.base, mexcFx:fx.expr });
+}
+for(const fx of FRANKFURTER_FX){
+  addInstrument(fx);
 }
 
 /* ===== 2) UI rows ===== */
@@ -579,7 +591,7 @@ function connectBinance(){
   if(wsBinance && (wsBinance.readyState===WebSocket.OPEN || wsBinance.readyState===WebSocket.CONNECTING)) return;
   if(binanceTimer){ clearTimeout(binanceTimer); binanceTimer=null; }
 
-  const bases = [...BINANCE_SYMBOLS.crypto, ...BINANCE_SYMBOLS.stocks, ...BINANCE_SYMBOLS.metals];
+  const bases = [...BINANCE_SYMBOLS.crypto, ...BINANCE_SYMBOLS.stocks, ...BINANCE_SYMBOLS.indexes, ...BINANCE_SYMBOLS.metals];
   const streams = bases.flatMap(s => [s.toLowerCase()+"@ticker", s.toLowerCase()+"@kline_1d"]).join("/");
   const url = "wss://fstream.binance.com/stream?streams=" + streams;
 
@@ -621,6 +633,7 @@ function queueBinanceReconnect(){
 
 /* ===== MEXC WS ===== */
 let wsMexc=null, mexcTimer=null, mexcBackoff=800, mexcPing=null;
+let frankfurterTimer=null;
 const mexcSymbolToId = new Map(); // subscribedSymbol -> instrumentId (ticker)
 const fxState = new Map();
 const mexcStockMap = new Map();   // base -> STOCK_USDT
@@ -843,6 +856,21 @@ function recomputeFx(){
   }
 }
 
+async function fetchFrankfurterUsdKrw(){
+  try{
+    const res = await fetch("https://api.frankfurter.dev/v1/latest?base=USD&symbols=KRW", { cache:"no-store" });
+    if(!res.ok) return;
+    const data = await res.json();
+    const last = parseFloat(data?.rates?.KRW);
+    if(isFinite(last)) applyUpdate("FFX:USDKRW", last, NaN, NaN, NaN);
+  }catch(_){ }
+}
+function startFrankfurterFx(){
+  fetchFrankfurterUsdKrw();
+  if(frankfurterTimer) clearInterval(frankfurterTimer);
+  frankfurterTimer = setInterval(fetchFrankfurterUsdKrw, FRANKFURTER_POLL_MS);
+}
+
 /* ===== TradingView View ===== */
 let tvLoaded = false;
 let tvWidget = null;
@@ -913,6 +941,7 @@ function closeAll(){
   try{ wsMexc && wsMexc.close(); }catch(_){}
   wsBinance = wsMexc = null;
   if(mexcPing){ clearInterval(mexcPing); mexcPing=null; }
+  if(frankfurterTimer){ clearInterval(frankfurterTimer); frankfurterTimer=null; }
   setDot(dotBinance,"DEAD");
   setDot(dotMexc,"DEAD");
 }
@@ -923,6 +952,7 @@ document.getElementById("reconnectBtn").onclick = ()=> {
   dailyOpenById.clear();
   connectBinance();
   connectMexc();
+  startFrankfurterFx();
 };
 
 window.addEventListener("visibilitychange", ()=> {
@@ -935,6 +965,7 @@ window.addEventListener("visibilitychange", ()=> {
 /* ===== Start ===== */
 connectBinance();
 connectMexc();
+startFrankfurterFx();
 applySort();
 </script>
 </body>
