@@ -235,7 +235,7 @@ function typeTagClass(type){
 
 /* ===== 기본정렬 그룹 정의 ===== */
 const INDEX_ORDER = ["NAS100","SP500","US30","QQQ","NIKKEI225"];
-const CRYPTO_ORDER = ["BTC","ETH","SOL","XRP","BNB","DOGE"];
+const CRYPTO_ORDER = ["BTC","ETH","SOL","XRP","BNB","DOGE","TRX","ALL"];
 const CRYPTO_SET = new Set(CRYPTO_ORDER);
 const BIGTECH_ORDER = ["AAPL","MSFT","AMZN","NVDA","GOOGL","META","TSLA","ORCL","AMD","INTC"];
 const BIGTECH_SET = new Set(BIGTECH_ORDER);
@@ -274,9 +274,9 @@ const DEAD_DISPLAYS = new Set([
 const METAL_KR_LABELS = { XAU: "금", XAG: "은", XPT: "백금", XPD: "팔라듐", COPPER: "구리" };
 
 const BINANCE_SYMBOLS = {
-  crypto: ["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","BNBUSDT","DOGEUSDT"],
-  stocks: ["CRCLUSDT","MSTRUSDT","HOODUSDT","PLTRUSDT","COINUSDT","TSLAUSDT","AMZNUSDT","INTCUSDT"],
-  indexes: ["EWYUSDT"],
+  crypto: ["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","BNBUSDT","DOGEUSDT","TRXUSDT","ALLUSDT"],
+  stocks: ["AAPLUSDT","AMZNUSDT","BZUSDT","CLUSDT","COINUSDT","CRCLUSDT","MSTRUSDT","HOODUSDT","PLTRUSDT","SNDKUSDT","TSLAUSDT","INTCUSDT"],
+  indexes: ["EWYUSDT","EWJUSDT"],
   metals: ["XAUUSDT","XAGUSDT","XPDUSDT","XPTUSDT","COPPERUSDT"],
 };
 const BINANCE_SET = new Set([...BINANCE_SYMBOLS.crypto, ...BINANCE_SYMBOLS.stocks, ...BINANCE_SYMBOLS.indexes, ...BINANCE_SYMBOLS.metals]);
