@@ -592,18 +592,31 @@ function connectBinance(){
   if(binanceTimer){ clearTimeout(binanceTimer); binanceTimer=null; }
 
   const bases = [...BINANCE_SYMBOLS.crypto, ...BINANCE_SYMBOLS.stocks, ...BINANCE_SYMBOLS.indexes, ...BINANCE_SYMBOLS.metals];
-  const streams = bases.flatMap(s => [s.toLowerCase()+"@ticker", s.toLowerCase()+"@kline_1d"]).join("/");
-  const url = "wss://fstream.binance.com/stream?streams=" + streams;
+  const streams = bases.flatMap(s => [s.toLowerCase()+"@ticker", s.toLowerCase()+"@kline_1d"]);
+  if(!streams.length){ queueBinanceReconnect(); return; }
+  const url = "wss://fstream.binance.com/ws";
 
   setDot(dotBinance,"DEAD");
   try{ wsBinance = new WebSocket(url); }catch(e){ queueBinanceReconnect(); return; }
 
-  wsBinance.onopen = ()=>{ binanceBackoff=800; setDot(dotBinance,"LIVE"); };
+  wsBinance.onopen = ()=>{
+    binanceBackoff=800;
+    setDot(dotBinance,"LIVE");
+    const CHUNK = 80; // 10msg/s 제한 고려해서 큰 덩어리로 전송
+    for(let i=0; i<streams.length; i+=CHUNK){
+      wsBinance.send(JSON.stringify({
+        method: "SUBSCRIBE",
+        params: streams.slice(i, i+CHUNK),
+        id: Math.floor(i/CHUNK)+1
+      }));
+    }
+  };
   wsBinance.onmessage = (ev)=>{
     try{
       const msg = JSON.parse(ev.data);
+      if(msg.result === null || msg.id) return; // SUBSCRIBE ack
+      const d = msg.data || msg;
       const stream = msg.stream || "";
-      const d = msg.data;
       if(!d) return;
 
       if(stream.endsWith("@kline_1d") && d.k && d.k.s){
@@ -970,5 +983,3 @@ applySort();
 </script>
 </body>
 </html>
-
-
