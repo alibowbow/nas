@@ -362,6 +362,18 @@ const FRANKFURTER_FX = [
 ];
 const FRANKFURTER_POLL_MS = 60000;
 const MEXC_FX_BASES = ["EUR_USDT","GBP_USDT","AUD_USDT","CAD_USDT","CHF_USDT","JPY_USDT"];
+
+// USD/KRW를 MEXC 포렉스 심볼에서 직접 산출(있으면 MEXC 우선, 없으면 Frankfurter 폴백)
+//  - KRW_USDT   : 1 KRW의 USDT 호가(≈0.00072) → USD/KRW = 1/값
+//  - USDKRW_USDT: 원/달러 직접 호가(≈1383)      → USD/KRW = 값
+const MEXC_KRW_SYMBOLS = ["USDKRW_USDT","KRW_USDT"];
+function mexcKrwRate(sym, last){
+  if(!isFinite(last) || last <= 0) return NaN;
+  if(sym === "KRW_USDT")    return 1 / last;
+  if(sym === "USDKRW_USDT") return last;
+  return last < 0.1 ? 1 / last : last; // 안전망: 크기로 방향 추정
+}
+let lastMexcKrwTs = 0; // MEXC가 환율을 마지막으로 준 시각(Frankfurter 폴백 게이트)
 const MEXC_FX = [
   { base:"EURUSD", type:"FX", label:"EUR/USD", expr:{op:"DIRECT", a:"EUR_USDT"} },
   { base:"GBPUSD", type:"FX", label:"GBP/USD", expr:{op:"DIRECT", a:"GBP_USDT"} },
@@ -647,8 +659,16 @@ function updateKospiCard(id){
 }
 function updateAllKospiCards(){
   for(const id of kospiCardEls.keys()) updateKospiCard(id);
-  const fx = usdKrwRate();
-  if(usdKrwTop) usdKrwTop.textContent = isFinite(fx) ? ("₩" + fmtKRW(fx)) : "-";
+  if(usdKrwTop){
+    const v = lastValue.get("FFX:USDKRW");
+    if(v && isFinite(v.last)){
+      const srcTag = v.src === "MEXC" ? " ·MEXC" : v.src === "FRANKFURTER" ? " ·FX" : "";
+      usdKrwTop.textContent = "₩" + fmtKRW(v.last) + srcTag;
+      usdKrwTop.title = "USD/KRW 출처: " + (v.src || "-");
+    }else{
+      usdKrwTop.textContent = "-";
+    }
+  }
 }
 
 /* ===== Filters + Sort ===== */
@@ -932,8 +952,11 @@ function connectMexc(){
 
     mexcPing = setInterval(()=>{ try{ wsMexc.send(JSON.stringify({method:"ping"})); }catch(_){ } }, 15000);
 
-    // FX base 먼저 구독
+    // FX base + USD/KRW 환율 먼저 구독
     for(const b of MEXC_FX_BASES){
+      mexcSubscribe(b, "__FX_BASE__");
+    }
+    for(const b of MEXC_KRW_SYMBOLS){
       mexcSubscribe(b, "__FX_BASE__");
     }
 
@@ -1000,6 +1023,15 @@ function connectMexc(){
         if (MEXC_FX_BASES.includes(sym) && isFinite(last) && isFinite(rfr)){
           fxState.set(sym, { last, rfr });
           recomputeFx();
+        }
+
+        // USD/KRW 환율을 MEXC 심볼에서 직접 산출(있으면 MEXC 우선, Frankfurter는 폴백)
+        if (MEXC_KRW_SYMBOLS.includes(sym) && isFinite(last)){
+          const rate = mexcKrwRate(sym, last);
+          if(isFinite(rate) && rate > 0){
+            lastMexcKrwTs = Date.now();
+            applyUpdate("FFX:USDKRW", rate, NaN, NaN, NaN, "MEXC");
+          }
         }
 
         const id = mexcSymbolToId.get(sym);
@@ -1124,12 +1156,14 @@ function recomputeFx(){
 }
 
 async function fetchFrankfurterUsdKrw(){
+  // MEXC가 최근(20초 내) 환율을 줬으면 폴백은 덮어쓰지 않음 → MEXC 우선
+  if(Date.now() - lastMexcKrwTs < 20000) return;
   try{
     const res = await fetch("https://api.frankfurter.dev/v1/latest?base=USD&symbols=KRW", { cache:"no-store" });
     if(!res.ok) return;
     const data = await res.json();
     const last = parseFloat(data?.rates?.KRW);
-    if(isFinite(last)) applyUpdate("FFX:USDKRW", last, NaN, NaN, NaN);
+    if(isFinite(last) && (Date.now() - lastMexcKrwTs >= 20000)) applyUpdate("FFX:USDKRW", last, NaN, NaN, NaN, "FRANKFURTER");
   }catch(_){ }
 }
 function startFrankfurterFx(){
