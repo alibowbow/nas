@@ -532,6 +532,11 @@ for(const m of MEXC_METALS){
 for(const e of MEXC_ETFS){
   addInstrument({ id:"M:"+e.display, ex:"MEXC", type:"Index", display:e.display, label:e.label, subLabel:e.subLabel, base:e.base, tvSymbol:e.tvSymbol, mexcSymbols:e.mexcSymbols });
 }
+// SpaceX(SPCX) — 2026.6 NASDAQ 상장. 라이브 시세는 MEXC 무기한 선물, 차트는 NASDAQ:SPCX
+addInstrument({
+  id:"M:SPCXUSDT", ex:"MEXC", type:"Stock", display:"SPCXUSDT", label:"SPCX", subLabel:"SpaceX",
+  base:"SPCX", tvSymbol:"NASDAQ:SPCX", mexcSymbols:["SPCX_USDT","SPCXUSDT","SPCXSTOCK_USDT"]
+});
 for(const fx of MEXC_FX){
   addInstrument({ id:"MFX:"+fx.base, ex:"MEXC", type:"FX", display:fx.base, label:fx.label, base:fx.base, mexcFx:fx.expr });
 }
@@ -568,7 +573,7 @@ addInstrument({
 // MEXC가 'EWY 한국 지수 선물'로 상장. 다른 개별 한국주는 아직 perp 미상장이라 바스켓으로 커버.
 addInstrument({
   id:"M:EWY", ex:"MEXC", type:"Index", display:"EWY", label:"EWY", base:"EWY",
-  krLabel:"MSCI 한국 ETF", sub:"EWYon · 한화에어로·두산 등 80+종목", tvSymbol:"AMEX:EWY",
+  krLabel:"MSCI 한국 ETF", sub:"EWYon · 한국 증시 바스켓", tvSymbol:"AMEX:EWY",
   logo:"KR", color:"#0A3D91", unit:"$", liveLabel:"Ondo EWYon · CoinGecko/MEXC",
   kospi:true, kospiQuote:true
 });
