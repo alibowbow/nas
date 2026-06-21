@@ -358,7 +358,7 @@ function typeTagClass(type){
 
 /* ===== 기본정렬 그룹 정의 ===== */
 const INDEX_ORDER = ["NAS100","SP500","US30","QQQ","NIKKEI225"];
-const CRYPTO_ORDER = ["BTC","ETH","SOL","XRP","BNB","DOGE","TRX","ALL"];
+const CRYPTO_ORDER = ["BTC","ETH","SOL","XRP","BNB","DOGE","TRX","ALL","ONDO","XLM","NEAR","WLD"];
 const CRYPTO_SET = new Set(CRYPTO_ORDER);
 const BIGTECH_ORDER = ["AAPL","MSFT","AMZN","NVDA","GOOGL","META","TSLA","ORCL","AMD","INTC"];
 const BIGTECH_SET = new Set(BIGTECH_ORDER);
@@ -398,7 +398,7 @@ const DEAD_DISPLAYS = new Set([
 const METAL_KR_LABELS = { XAU: "금", XAG: "은", XPT: "백금", XPD: "팔라듐", COPPER: "구리" };
 
 const BINANCE_SYMBOLS = {
-  crypto: ["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","BNBUSDT","DOGEUSDT","TRXUSDT","ALLUSDT"],
+  crypto: ["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","BNBUSDT","DOGEUSDT","TRXUSDT","ALLUSDT","ONDOUSDT","XLMUSDT","NEARUSDT","WLDUSDT"],
 };
 const BINANCE_SET = new Set([...BINANCE_SYMBOLS.crypto]);
 
@@ -1109,8 +1109,8 @@ function connectMexc(){
       mexcSubscribe(b, "__FX_BASE__");
     }
 
-    // 크립토 일봉 시가(등락률용) — 바이낸스 선물 차단 시 Hyperliquid는 가격만 주므로 MEXC로 보완
-    subscribeMexcCryptoDailyOpen();
+    // 크립토 폴백(등락률용 일봉 시가 + 비상 가격) — 바이낸스 선물 차단 대비, MEXC로 보완
+    subscribeMexcCryptoFallback();
 
     // contract 워밍업: STOCK 계약 맵 수집
     wsMexc.send(JSON.stringify({ method:"sub.contract", gzip:false }));
@@ -1188,9 +1188,11 @@ function connectMexc(){
 
         const id = mexcSymbolToId.get(sym);
         if(id && id !== "__FX_BASE__" && isFinite(last)){
-          // dayOpen은 Day1 kline에서만 저장해서 일봉 기준으로 계산
-          // 일봉 시가 수신 전에는 resolvePct()가 NaN을 반환 => UI에 '-' 표시
-          applyUpdate(id, last, pct24h, vol, NaN, "MEXC");
+          // 크립토(B:*)는 Binance/Hyperliquid가 최신이면 MEXC 가격은 양보(폴백 전용) — 가격 깜빡임 방지
+          const cur = lastValue.get(id);
+          const cryptoYield = id.startsWith("B:") && cur && (cur.src==="BINANCE"||cur.src==="HYPER") && (Date.now()-cur.ts)<6000;
+          // dayOpen은 Day1 kline에서만 저장해서 일봉 기준으로 계산(시가 수신 전엔 '-')
+          if(!cryptoYield) applyUpdate(id, last, pct24h, vol, NaN, "MEXC");
         }
       }
     }catch(_){}
@@ -1229,20 +1231,14 @@ function mexcSubscribe(symbol, id){
   }
 }
 
-// 크립토 일봉 시가 폴백: 바이낸스 선물이 막히면 가격은 Hyperliquid(allMids)에서 오지만
-// 일봉 시가가 없어 등락률이 '-'로 남음 → MEXC Day1 kline로 일봉 시가만 받아 등락률 계산.
-// (ticker는 구독하지 않아 가격 소스는 그대로 두고 시가만 보완)
-function subscribeMexcCryptoDailyOpen(){
+// 크립토 MEXC 폴백: 바이낸스 선물이 막히면 가격은 Hyperliquid(allMids)에서 오지만
+// 일봉 시가가 없어 등락률이 '-'로 남고, 코인이 Hyperliquid에 없으면 가격조차 안 뜸.
+// → MEXC에서 ticker(폴백 가격) + Day1 kline(일봉 시가)을 받아 보완.
+//   가격은 Binance/Hyperliquid 우선, MEXC는 둘 다 끊겼을 때만 적용(아래 ticker 핸들러 가드).
+function subscribeMexcCryptoFallback(){
   if(!wsMexc || wsMexc.readyState !== WebSocket.OPEN) return;
   for(const s of BINANCE_SYMBOLS.crypto){
-    const sym = s.replace("USDT","") + "_USDT"; // BTCUSDT -> BTC_USDT
-    const id  = "B:" + s;
-    if(!mexcKlineToIds.has(sym)) mexcKlineToIds.set(sym, new Set());
-    mexcKlineToIds.get(sym).add(id);
-    if(!mexcKlineSubscribed.has(sym)){
-      mexcKlineSubscribed.add(sym);
-      wsMexc.send(JSON.stringify({ method:"sub.kline", param:{symbol:sym, interval:"Day1"}, gzip:false }));
-    }
+    mexcSubscribe(s.replace("USDT","") + "_USDT", "B:" + s); // BTCUSDT -> BTC_USDT, id=B:BTCUSDT
   }
 }
 
