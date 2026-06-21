@@ -486,6 +486,12 @@ const MEXC_METALS = [
   { base:"COPPER", display:"COPPERUSDT", mexcSymbols:["COPPER_USDT","XCU_USDT","HG_USDT"] },
 ];
 
+// ETF — 라이브 시세는 MEXC 무기한 선물(후보 심볼 매핑), 차트는 실제 ETF 심볼 사용
+const MEXC_ETFS = [
+  { base:"SOXL", display:"SOXLUSDT", label:"SOXL", subLabel:"반도체 Bull 3X",        tvSymbol:"AMEX:SOXL", mexcSymbols:["SOXL_USDT","SOXLSTOCK_USDT"] },
+  { base:"DRAM", display:"DRAMUSDT", label:"DRAM", subLabel:"메모리 ETF · 삼성·SK·마이크론", tvSymbol:"CBOE:DRAM", mexcSymbols:["DRAM_USDT","DRAMSTOCK_USDT"] },
+];
+
 // 인스트루먼트 생성(중복 없이 + dead 제거)
 const INSTRUMENTS = [];
 const usedDisplay = new Set();
@@ -522,6 +528,9 @@ for(const e of MEXC_ENERGY){
 }
 for(const m of MEXC_METALS){
   addInstrument({ id:"M:"+m.display, ex:"MEXC", type:"Commodity", display:m.display, label:m.base, subLabel: METAL_KR_LABELS[m.base] || "", base:m.base, mexcSymbols:m.mexcSymbols });
+}
+for(const e of MEXC_ETFS){
+  addInstrument({ id:"M:"+e.display, ex:"MEXC", type:"Index", display:e.display, label:e.label, subLabel:e.subLabel, base:e.base, tvSymbol:e.tvSymbol, mexcSymbols:e.mexcSymbols });
 }
 for(const fx of MEXC_FX){
   addInstrument({ id:"MFX:"+fx.base, ex:"MEXC", type:"FX", display:fx.base, label:fx.label, base:fx.base, mexcFx:fx.expr });
