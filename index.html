@@ -1262,9 +1262,10 @@ function subscribeMexcFinal(){
       if(mexcStockMap.has(b)) symbols.push(mexcStockMap.get(b));
       symbols.push(b + "STOCK_USDT");
       symbols.push(b + "_USDT");
+      symbols.push(b + "USDT");   // 무언더스코어 형식(예: TSLAUSDT) — MEXC가 이 형식으로 상장한 종목 대응
     }
 
-    const uniq = Array.from(new Set(symbols)).slice(0, 6);
+    const uniq = Array.from(new Set(symbols)).slice(0, 8);
     for(const s of uniq) queue.push([s, it.id]);
   }
 
