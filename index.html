@@ -390,28 +390,26 @@ const DEAD_DISPLAYS = new Set([
 ]);
 
 /* ===== 1) Instruments =====
-   - Binance: 너가 캡처로 확인한 TradFi 종목만
-   - MEXC: Binance에 없는 애들 + FX/지수/에너지
+   - Binance: 크립토만 (TradFi 종목은 전부 MEXC로 이전)
+   - MEXC: 주식 + 지수/ETF + 원자재/금속 + FX + 에너지 등 TradFi 전체
 */
 const METAL_KR_LABELS = { XAU: "금", XAG: "은", XPT: "백금", XPD: "팔라듐", COPPER: "구리" };
 
 const BINANCE_SYMBOLS = {
   crypto: ["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","BNBUSDT","DOGEUSDT","TRXUSDT","ALLUSDT"],
-  stocks: ["AAPLUSDT","AMZNUSDT","BZUSDT","CLUSDT","COINUSDT","CRCLUSDT","MSTRUSDT","HOODUSDT","PLTRUSDT","SNDKUSDT","TSLAUSDT","INTCUSDT"],
-  indexes: ["EWJUSDT"],
-  metals: ["XAUUSDT","XAGUSDT","XPDUSDT","XPTUSDT","COPPERUSDT"],
 };
-const BINANCE_SET = new Set([...BINANCE_SYMBOLS.crypto, ...BINANCE_SYMBOLS.stocks, ...BINANCE_SYMBOLS.indexes, ...BINANCE_SYMBOLS.metals]);
+const BINANCE_SET = new Set([...BINANCE_SYMBOLS.crypto]);
 
 const MEXC_DISPLAY = [
   "AAPLUSDT","ACNUSDT","ADBEUSDT","AMATUSDT","AMDUSDT","AMZNUSDT","ARMUSDT","ASMLUSDT","AVGOUSDT",
-  "BABAUSDT","BACUSDT","BAUSDT",
-  "COINUSDT","CRCLUSDT","CRMUSDT","CRWDUSDT","CSCOUSDT",
+  "BABAUSDT","BACUSDT","BAUSDT","BZUSDT",
+  "CLUSDT","COINUSDT","CRCLUSDT","CRMUSDT","CRWDUSDT","CSCOUSDT",
+  "EWJUSDT",
   "FUTUUSDT","GEUSDT","GOOGLUSDT","GSUSDT","IBMUSDT","INTCUSDT","INTUUSDT",
   "JDUSDT","JNJUSDT","JPMUSDT","LLYUSDT","LRCXUSDT","MAUSDT","MCDUSDT","METAUSDT",
   "MRVLUSDT","MSFTUSDT","MSTRUSDT","MUUSDT","NAS100USDT","NFLXUSDT","NVDAUSDT","NKEUSDT",
   "ORCLUSDT","PANWUSDT","PEPUSDT","PLTRUSDT","PYPLUSDT","QCOMUSDT","QQQUSDT","RDDTUSDT","HOODUSDT",
-  "SHOPUSDT","SMCIUSDT","SPOTUSDT","SP500USDT","TSLAUSDT","UBERUSDT","UNHUSDT","US30USDT",
+  "SHOPUSDT","SMCIUSDT","SNDKUSDT","SPOTUSDT","SP500USDT","TSLAUSDT","UBERUSDT","UNHUSDT","US30USDT",
   "VZUSDT","WMTUSDT","XOMUSDT"
 ].filter(x => !DEAD_DISPLAYS.has(x));
 
@@ -423,6 +421,8 @@ const INDEX_MAP = new Map([
   ["KOSPI",  ["KOSPI_USDT","KOSPI200_USDT","KS200_USDT","KOSPI200STOCK_USDT"]],
   // MSCI 한국 ETF — MEXC 'EWY_USDT' / Ondo 토큰 'EWYON_USDT' / 'EWYSTOCK_USDT'
   ["EWY",    ["EWY_USDT","EWYON_USDT","EWYSTOCK_USDT"]],
+  // MSCI 일본 ETF(EWJ) — 바이낸스에서 MEXC로 이전
+  ["EWJ",    ["EWJ_USDT","EWJSTOCK_USDT"]],
 ]);
 
 const BASE_ALIASES = {
@@ -475,6 +475,15 @@ const MEXC_ENERGY = [
   { base:"NGAS",  display:"NGASUSDT",  type:"Energy", label:"Natural Gas", mexcSymbols:["NGAS_USDT","NG_USDT"] },
 ];
 
+// 원자재/금속 — 바이낸스에서 MEXC USDT 무기한 선물로 이전(후보 심볼 중 응답하는 것으로 매핑)
+const MEXC_METALS = [
+  { base:"XAU",    display:"XAUUSDT",    mexcSymbols:["XAU_USDT","XAUT_USDT","GOLD_USDT"] },
+  { base:"XAG",    display:"XAGUSDT",    mexcSymbols:["XAG_USDT","SILVER_USDT"] },
+  { base:"XPT",    display:"XPTUSDT",    mexcSymbols:["XPT_USDT","PLATINUM_USDT"] },
+  { base:"XPD",    display:"XPDUSDT",    mexcSymbols:["XPD_USDT","PALLADIUM_USDT"] },
+  { base:"COPPER", display:"COPPERUSDT", mexcSymbols:["COPPER_USDT","XCU_USDT","HG_USDT"] },
+];
+
 // 인스트루먼트 생성(중복 없이 + dead 제거)
 const INSTRUMENTS = [];
 const usedDisplay = new Set();
@@ -490,16 +499,6 @@ function addInstrument(it){
 
 for(const s of BINANCE_SYMBOLS.crypto){
   addInstrument({ id:"B:"+s, ex:"BINANCE", type:"Crypto", display:s, label:s.replace("USDT",""), base:s.replace("USDT",""), ws:s.toLowerCase()+"@ticker" });
-}
-for(const s of BINANCE_SYMBOLS.stocks){
-  addInstrument({ id:"B:"+s, ex:"BINANCE", type:"Stock", display:s, label:s.replace("USDT",""), base:s.replace("USDT",""), ws:s.toLowerCase()+"@ticker" });
-}
-for(const s of BINANCE_SYMBOLS.indexes){
-  addInstrument({ id:"B:"+s, ex:"BINANCE", type:"Index", display:s, label:s.replace("USDT",""), base:s.replace("USDT",""), ws:s.toLowerCase()+"@ticker" });
-}
-for(const s of BINANCE_SYMBOLS.metals){
-  const base = s.replace("USDT","");
-  addInstrument({ id:"B:"+s, ex:"BINANCE", type:"Commodity", display:s, label:base, subLabel: METAL_KR_LABELS[base] || "", base, ws:s.toLowerCase()+"@ticker" });
 }
 
 const mexcFiltered = Array.from(new Set(MEXC_DISPLAY))
@@ -518,6 +517,9 @@ for(const d of mexcFiltered){
 }
 for(const e of MEXC_ENERGY){
   addInstrument({ id:"ME:"+e.display, ex:"MEXC", type:e.type, display:e.display, label:e.label, base:e.base, mexcSymbols:e.mexcSymbols });
+}
+for(const m of MEXC_METALS){
+  addInstrument({ id:"M:"+m.display, ex:"MEXC", type:"Commodity", display:m.display, label:m.base, subLabel: METAL_KR_LABELS[m.base] || "", base:m.base, mexcSymbols:m.mexcSymbols });
 }
 for(const fx of MEXC_FX){
   addInstrument({ id:"MFX:"+fx.base, ex:"MEXC", type:"FX", display:fx.base, label:fx.label, base:fx.base, mexcFx:fx.expr });
@@ -908,7 +910,7 @@ function connectBinance(){
   if(wsBinance && (wsBinance.readyState===WebSocket.OPEN || wsBinance.readyState===WebSocket.CONNECTING)) return;
   if(binanceTimer){ clearTimeout(binanceTimer); binanceTimer=null; }
 
-  const bases = [...BINANCE_SYMBOLS.crypto, ...BINANCE_SYMBOLS.stocks, ...BINANCE_SYMBOLS.indexes, ...BINANCE_SYMBOLS.metals];
+  const bases = [...BINANCE_SYMBOLS.crypto];
   const streams = bases.flatMap(s => [s.toLowerCase()+"@ticker", s.toLowerCase()+"@kline_1d"]);
   if(!streams.length){ queueBinanceReconnect(); return; }
   const url = "wss://fstream.binance.com/ws";
@@ -1190,7 +1192,7 @@ function baseCandidates(base){
 }
 
 function subscribeMexcFinal(){
-  const mexcRows = INSTRUMENTS.filter(x => x.ex === "MEXC" && (x.type==="Stock" || x.type==="Index" || x.type==="Energy"));
+  const mexcRows = INSTRUMENTS.filter(x => x.ex === "MEXC" && (x.type==="Stock" || x.type==="Index" || x.type==="Energy" || x.type==="Commodity"));
 
   const queue = [];
 
