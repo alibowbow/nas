@@ -144,6 +144,7 @@
       <div class="status">
         <span><span class="dot" id="dotMexc"></span> MEXC</span>
         <span><span class="dot" id="dotHyper"></span> Hyperliquid</span>
+        <span title="Ondo 토큰화 주식(EWYon 등) 시세"><span class="dot" id="dotCoin"></span> CoinGecko</span>
         <span title="바이낸스 선물은 한국에서 접속이 제한될 수 있어요"><span class="dot" id="dotBinance"></span> Binance</span>
         <span class="muted">|</span>
         <span class="muted">USD/KRW</span>
@@ -347,8 +348,8 @@ const INDEX_MAP = new Map([
   ["US30",   ["US30_USDT"]],
   // KOSPI 지수 후보 심볼(거래소에 있으면 라이브, 없으면 카드에 '-' 표시)
   ["KOSPI",  ["KOSPI_USDT","KOSPI200_USDT","KS200_USDT","KOSPI200STOCK_USDT"]],
-  // MSCI 한국 ETF (MEXC EWY 지수 선물) — 'EWY_USDT' 또는 'EWYSTOCK_USDT'
-  ["EWY",    ["EWY_USDT","EWYSTOCK_USDT"]],
+  // MSCI 한국 ETF — MEXC 'EWY_USDT' / Ondo 토큰 'EWYON_USDT' / 'EWYSTOCK_USDT'
+  ["EWY",    ["EWY_USDT","EWYON_USDT","EWYSTOCK_USDT"]],
 ]);
 
 const BASE_ALIASES = {
@@ -478,8 +479,9 @@ addInstrument({
 // MEXC가 'EWY 한국 지수 선물'로 상장. 다른 개별 한국주는 아직 perp 미상장이라 바스켓으로 커버.
 addInstrument({
   id:"M:EWY", ex:"MEXC", type:"Index", display:"EWY", label:"EWY", base:"EWY",
-  krLabel:"MSCI 한국 ETF", sub:"EWY · 한국 증시 바스켓", tvSymbol:"AMEX:EWY",
-  logo:"KR", color:"#0A3D91", unit:"$", kospi:true, kospiQuote:true
+  krLabel:"MSCI 한국 ETF", sub:"EWYon · 한화에어로·두산 등 80+종목", tvSymbol:"AMEX:EWY",
+  logo:"KR", color:"#0A3D91", unit:"$", liveLabel:"Ondo EWYon · CoinGecko/MEXC",
+  kospi:true, kospiQuote:true
 });
 
 /* ===== 2) UI rows ===== */
@@ -599,7 +601,7 @@ function makeKospiCard(it, mode){
   const ld = document.createElement("span"); ld.className="dot";
   const lt = document.createElement("span");
   lt.textContent = isStock ? "MEXC 선물 · 실시간"
-                 : (mode === "index" ? "지수 · KRX:KOSPI" : "MEXC · 한국 증시 바스켓");
+                 : (it.liveLabel || (mode === "index" ? "지수 · KRX:KOSPI" : "MEXC · 한국 증시 바스켓"));
   live.appendChild(ld); live.appendChild(lt);
 
   card.appendChild(top); card.appendChild(price);
@@ -810,8 +812,10 @@ function resolvePct(id, last, fallbackPct, dayOpen){
   return NaN;
 }
 
-function applyUpdate(id, last, pct, vol, dayOpen, src){
-  const resolvedPct = resolvePct(id, last, pct, dayOpen);
+function applyUpdate(id, last, pct, vol, dayOpen, src, usePctDirect){
+  let resolvedPct = resolvePct(id, last, pct, dayOpen);
+  // 일봉 시가가 아직 없을 때 CoinGecko 24h 변동률 같은 값을 그대로 사용(usePctDirect)
+  if(!isFinite(resolvedPct) && usePctDirect && isFinite(pct)) resolvedPct = pct;
   const prev = lastValue.get(id);
   lastValue.set(id, {
     last,
@@ -1193,6 +1197,49 @@ function startFrankfurterFx(){
   frankfurterTimer = setInterval(fetchFrankfurterUsdKrw, FRANKFURTER_POLL_MS);
 }
 
+/* ===== CoinGecko REST (Ondo 토큰화 주식 · 무료/CORS) =====
+   한화에어로·두산에너빌리티는 개별 토큰이 아니라 EWYon(Ondo 토큰화 한국 ETF)의
+   구성종목이라, EWYon을 CoinGecko로 가져와 한국 바스켓 카드를 채워요.
+   ※ Ondo가 개별 한국주 토큰(예: …-ondo-tokenized-stock)을 상장하면
+     아래 맵에 'coingeckoId → 인스트루먼트id'만 추가하면 카드가 살아나요. */
+const dotCoin = document.getElementById("dotCoin");
+const COINGECKO_POLL_MS = 45000;
+const COINGECKO_MAP = new Map([
+  ["ishares-msci-south-korea-etf-ondo-tokenized", "M:EWY"], // EWYon ≈ 한국 증시 바스켓
+  // 개별 한국주가 Ondo에 개별 토큰으로 상장되면 여기에 추가:
+  // ["hanwha-aerospace-ondo-tokenized-stock", "M:EWY"],
+  // ["doosan-enerbility-ondo-tokenized-stock", "M:EWY"],
+]);
+let coingeckoTimer=null;
+async function fetchCoinGecko(){
+  const ids = [...COINGECKO_MAP.keys()];
+  if(!ids.length){ if(dotCoin) setDot(dotCoin,"DEAD"); return; }
+  try{
+    const url = "https://api.coingecko.com/api/v3/simple/price?ids="
+      + encodeURIComponent(ids.join(",")) + "&vs_currencies=usd&include_24hr_change=true";
+    const res = await fetch(url, { cache:"no-store" });
+    if(!res.ok){ if(dotCoin) setDot(dotCoin,"DEAD"); return; }
+    const data = await res.json();
+    let live = false;
+    for(const [cgId, instId] of COINGECKO_MAP){
+      const row = data[cgId];
+      if(!row) continue;
+      const px = parseFloat(row.usd);
+      const ch = parseFloat(row.usd_24h_change);
+      if(isFinite(px)){
+        applyUpdate(instId, px, isFinite(ch)?ch:NaN, NaN, NaN, "COINGECKO", true);
+        live = true;
+      }
+    }
+    if(dotCoin) setDot(dotCoin, live ? "LIVE" : "DEAD");
+  }catch(_){ if(dotCoin) setDot(dotCoin,"DEAD"); }
+}
+function startCoinGecko(){
+  fetchCoinGecko();
+  if(coingeckoTimer) clearInterval(coingeckoTimer);
+  coingeckoTimer = setInterval(fetchCoinGecko, COINGECKO_POLL_MS);
+}
+
 /* ===== TradingView View ===== */
 let tvLoaded = false;
 let tvWidget = null;
@@ -1266,9 +1313,11 @@ function closeAll(){
   if(mexcPing){ clearInterval(mexcPing); mexcPing=null; }
   if(frankfurterTimer){ clearInterval(frankfurterTimer); frankfurterTimer=null; }
   if(hyperTimer){ clearTimeout(hyperTimer); hyperTimer=null; }
+  if(coingeckoTimer){ clearInterval(coingeckoTimer); coingeckoTimer=null; }
   setDot(dotBinance,"DEAD");
   setDot(dotMexc,"DEAD");
   setDot(dotHyper,"DEAD");
+  if(dotCoin) setDot(dotCoin,"DEAD");
 }
 document.getElementById("reconnectBtn").onclick = ()=> {
   closeAll();
@@ -1279,6 +1328,7 @@ document.getElementById("reconnectBtn").onclick = ()=> {
   connectHyperliquid();
   connectMexc();
   startFrankfurterFx();
+  startCoinGecko();
 };
 
 window.addEventListener("visibilitychange", ()=> {
@@ -1286,6 +1336,7 @@ window.addEventListener("visibilitychange", ()=> {
     if(!wsBinance || wsBinance.readyState !== WebSocket.OPEN) connectBinance();
     if(!wsHyper || wsHyper.readyState !== WebSocket.OPEN) connectHyperliquid();
     if(!wsMexc || wsMexc.readyState !== WebSocket.OPEN) connectMexc();
+    if(!coingeckoTimer) startCoinGecko();
   }
 });
 
@@ -1294,6 +1345,7 @@ connectBinance();
 connectHyperliquid();
 connectMexc();
 startFrankfurterFx();
+startCoinGecko();
 updateAllKospiCards();
 applySort();
 </script>
