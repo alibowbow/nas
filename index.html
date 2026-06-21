@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>TradFi + Crypto Live (Binance + MEXC)</title>
+  <title>코스피 보드 · TradFi/Crypto Live (MEXC · Hyperliquid · Binance)</title>
   <style>
     :root{
       --bg:#0b1220; --card:#0f1a2e; --card2:#0d1628;
@@ -75,6 +75,32 @@
     .vol{color:var(--muted);font-size:12.5px;font-variant-numeric: tabular-nums;justify-self:end}
     .note{margin-top:10px;color:var(--muted);font-size:12.5px;line-height:1.45;padding:0 2px}
 
+    /* KOSPI board */
+    .kospiBoard{margin-top:14px}
+    .kospiHead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:2px 2px 12px}
+    .kospiHead h2{margin:0;font-size:16px;letter-spacing:.2px}
+    .kospiHead .badge{font-size:11px;padding:3px 9px;border-radius:999px;border:1px solid rgba(252,165,165,.22);color:#fca5a5;background:rgba(252,165,165,.08)}
+    .kospiHead .src{color:var(--muted);font-size:12px;margin-left:auto}
+    .kGrid{display:grid;grid-template-columns:1.15fr 1fr 1fr 1fr;gap:12px}
+    @media (max-width:900px){.kGrid{grid-template-columns:1fr 1fr}}
+    @media (max-width:560px){.kGrid{grid-template-columns:1fr}}
+    .kCard{border:1px solid var(--line);border-radius:18px;padding:16px 16px 14px;background:rgba(15,26,46,.6);box-shadow:var(--shadow);backdrop-filter:blur(8px);cursor:pointer;transition:transform .06s ease, filter .15s ease}
+    .kCard:hover{filter:brightness(1.06)}
+    .kCard:active{transform:translateY(1px)}
+    .kCard.index{background:linear-gradient(180deg, rgba(40,52,84,.7), rgba(15,26,46,.7));border-color:rgba(196,181,253,.18)}
+    .kTop{display:flex;align-items:center;gap:10px;min-width:0}
+    .kLogo{width:36px;height:36px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;color:#fff;flex:0 0 auto;letter-spacing:-.3px}
+    .kName{font-weight:800;font-size:15px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .kSub{color:var(--muted);font-size:11.5px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .kPrice{font-variant-numeric:tabular-nums;font-size:25px;font-weight:900;margin-top:12px;letter-spacing:.2px}
+    .kCard.index .kPrice{font-size:30px}
+    .kPrice .won{font-size:16px;color:var(--muted);margin-right:1px;font-weight:800}
+    .kUsd{color:var(--muted);font-size:12px;margin-top:4px;font-variant-numeric:tabular-nums}
+    .kDelta{font-variant-numeric:tabular-nums;font-weight:800;font-size:13px;margin-top:8px;color:var(--muted)}
+    .kDelta.up{color:#ef4444}    /* 한국식: 상승 빨강 */
+    .kDelta.down{color:#3b82f6}  /* 하락 파랑 */
+    .kLive{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:11px;margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+
     /* TV view */
     #tvView{display:none}
     #tvBox{
@@ -108,15 +134,20 @@
   <div id="listView">
     <div class="top">
       <div class="title">
-        <h1>TradFi + Crypto Live (Binance + MEXC)</h1>
+        <h1>코스피 보드 · TradFi/Crypto Live</h1>
         <div class="sub">
-          기본정렬: 지수 → 크립토 메이저 → 빅테크 → 나머지 · 행 클릭하면 TradingView 차트로 전환(뒤로 가능)
+          삼성전자·SK하이닉스·현대차 해외 추정가(MEXC 선물·USD/KRW 환산) + 크립토/지수/원자재 실시간 ·
+          행 클릭하면 TradingView 차트로 전환(뒤로 가능)
         </div>
       </div>
 
       <div class="status">
-        <span><span class="dot" id="dotBinance"></span> Binance</span>
         <span><span class="dot" id="dotMexc"></span> MEXC</span>
+        <span><span class="dot" id="dotHyper"></span> Hyperliquid</span>
+        <span title="바이낸스 선물은 한국에서 접속이 제한될 수 있어요"><span class="dot" id="dotBinance"></span> Binance</span>
+        <span class="muted">|</span>
+        <span class="muted">USD/KRW</span>
+        <span id="usdKrwTop">-</span>
         <span class="muted">|</span>
         <span class="muted">업데이트:</span>
         <span id="lastAnyUpdate">-</span>
@@ -126,6 +157,7 @@
 
       <div class="filters">
         <div class="pill on" id="filterAll">전체</div>
+        <div class="pill" id="filterKospi">코스피</div>
         <div class="pill" id="filterCrypto">크립토</div>
         <div class="pill" id="filterStock">주식</div>
         <div class="pill" id="filterIndex">지수/ETF</div>
@@ -146,6 +178,20 @@
         </select>
       </div>
     </div>
+
+    <!-- KOSPI BOARD -->
+    <section class="kospiBoard" id="kospiBoard">
+      <div class="kospiHead">
+        <h2>코스피 보드</h2>
+        <span class="badge">해외 파생 추정가</span>
+        <span class="src" id="kospiSrc">MEXC USDT 무기한 선물 · USD/KRW 환산</span>
+      </div>
+      <div class="kGrid" id="kGrid"></div>
+      <div class="note" style="margin-top:8px">
+        삼성전자·SK하이닉스·현대차는 MEXC USDT 무기한 선물(<span class="muted">…STOCK_USDT</span>)의 해외 가격을 USD/KRW로 환산한 <b>추정가</b>예요.
+        공식 시세가 아니며 실제가와 차이가 있을 수 있어요(비공식 정보 · 투자권유 아님). 등락은 일봉 시가 기준이에요.
+      </div>
+    </section>
 
     <div class="grid" id="grid">
       <div class="hdr" id="hdr">
@@ -249,6 +295,7 @@ function ensurePerpDotP(sym){
   return sym.endsWith(".P") ? sym : (sym + ".P");
 }
 function tvSymbolFor(it){
+  if(it.tvSymbol) return it.tvSymbol; // 명시적 오버라이드(예: 한국 종목 → KRX:005930)
   if(it.type === "FX"){
     if(it.base === "USDKRW") return "FX_IDC:USDKRW";
     return "OANDA:" + it.base; // e.g. EURUSD
@@ -297,6 +344,8 @@ const INDEX_MAP = new Map([
   ["NAS100", ["NAS100_USDT"]],
   ["SP500",  ["SPX500_USDT","SP500_USDT"]],
   ["US30",   ["US30_USDT"]],
+  // KOSPI 지수 후보 심볼(거래소에 있으면 라이브, 없으면 카드에 '-' 표시)
+  ["KOSPI",  ["KOSPI_USDT","KOSPI200_USDT","KS200_USDT","KOSPI200STOCK_USDT"]],
 ]);
 
 const BASE_ALIASES = {
@@ -388,6 +437,28 @@ for(const fx of FRANKFURTER_FX){
   addInstrument(fx);
 }
 
+/* ===== 코스피(한국 대형주) — MEXC USDT 무기한 선물 =====
+   삼성전자·SK하이닉스·현대차는 MEXC에 <NAME>STOCK_USDT 형태로 상장돼 있어요.
+   해외가(USD) × USD/KRW × krwScale = 원화 추정가.
+   ※ 선물 1계약 가격이 실제 1주 가격과 배수가 다를 수 있어요. 그땐 krwScale로 보정하세요. */
+const KOSPI_DEFS = [
+  { base:"SAMSUNG", krLabel:"삼성전자",   sub:"005930 · Samsung Elec.", logo:"삼성", color:"#1428A0", tvSymbol:"KRX:005930", krwScale:1 },
+  { base:"SKHYNIX", krLabel:"SK하이닉스", sub:"000660 · SK hynix",       logo:"SK",  color:"#E60012", tvSymbol:"KRX:000660", krwScale:1 },
+  { base:"HYUNDAI", krLabel:"현대차",     sub:"005380 · Hyundai Motor",  logo:"현대", color:"#002C5F", tvSymbol:"KRX:005380", krwScale:1 },
+];
+for(const k of KOSPI_DEFS){
+  addInstrument({
+    id:"M:"+k.base, ex:"MEXC", type:"Stock", display:k.base, label:k.base, base:k.base,
+    krLabel:k.krLabel, sub:k.sub, logo:k.logo, color:k.color, tvSymbol:k.tvSymbol,
+    krwScale:k.krwScale, kospi:true
+  });
+}
+// KOSPI 지수(있으면 라이브)
+addInstrument({
+  id:"M:KOSPI", ex:"MEXC", type:"Index", display:"KOSPI", label:"코스피 지수", base:"KOSPI",
+  krLabel:"KOSPI", sub:"코스피 종합지수", tvSymbol:"KRX:KOSPI", kospi:true, kospiIndex:true
+});
+
 /* ===== 2) UI rows ===== */
 const rows = new Map();
 const lastValue = new Map();
@@ -404,6 +475,7 @@ function buildRows(){
     row.dataset.sortChg = "-999999";
     row.dataset.sortVol = "-999999";
     row.dataset.sortName = it.display.toUpperCase();
+    row.dataset.kospi = it.kospi ? "1" : "0";
 
     let grp = 3;
     let grpOrder = 9999;
@@ -428,7 +500,7 @@ function buildRows(){
     const sym = document.createElement("div"); sym.className="sym";
     const left = document.createElement("div"); left.className="left";
 
-    const code = document.createElement("div"); code.className="code"; code.textContent = it.display;
+    const code = document.createElement("div"); code.className="code"; code.textContent = it.krLabel || it.display;
     const meta = document.createElement("div"); meta.className="meta";
 
     const tagPerp = document.createElement("span"); tagPerp.className="tag"; tagPerp.textContent = (it.type==="FX") ? "Derived" : "Perp";
@@ -465,8 +537,123 @@ function buildRows(){
 }
 buildRows();
 
+/* ===== KOSPI 보드 카드 ===== */
+const kGrid = document.getElementById("kGrid");
+const usdKrwTop = document.getElementById("usdKrwTop");
+const kospiCardEls = new Map(); // instrumentId -> els
+
+function usdKrwRate(){
+  const v = lastValue.get("FFX:USDKRW");
+  return (v && isFinite(v.last)) ? v.last : NaN;
+}
+const fmtKRW = (n) => isFinite(n) ? new Intl.NumberFormat("ko-KR",{maximumFractionDigits:0}).format(n) : "-";
+
+function makeKospiCard(it, isIndex){
+  const card = document.createElement("div");
+  card.className = "kCard" + (isIndex ? " index" : "");
+
+  const top = document.createElement("div"); top.className="kTop";
+  if(!isIndex){
+    const logo = document.createElement("div"); logo.className="kLogo";
+    logo.style.background = it.color || "#334155";
+    logo.textContent = it.logo || (it.krLabel||it.display).slice(0,2);
+    top.appendChild(logo);
+  }
+  const nameWrap = document.createElement("div"); nameWrap.style.minWidth="0";
+  const name = document.createElement("div"); name.className="kName"; name.textContent = it.krLabel || it.display;
+  const sub = document.createElement("div"); sub.className="kSub"; sub.textContent = it.sub || "";
+  nameWrap.appendChild(name); nameWrap.appendChild(sub);
+  top.appendChild(nameWrap);
+
+  const price = document.createElement("div"); price.className="kPrice";
+  price.innerHTML = isIndex ? "-" : `<span class="won">₩</span>-`;
+  const usd = document.createElement("div"); usd.className="kUsd"; usd.textContent = isIndex ? "" : "$ -";
+  const delta = document.createElement("div"); delta.className="kDelta"; delta.textContent = "전일 대비 –";
+
+  const live = document.createElement("div"); live.className="kLive";
+  const ld = document.createElement("span"); ld.className="dot";
+  const lt = document.createElement("span"); lt.textContent = isIndex ? "지수 · KRX:KOSPI" : "MEXC 선물 · 실시간";
+  live.appendChild(ld); live.appendChild(lt);
+
+  card.appendChild(top); card.appendChild(price);
+  if(!isIndex) card.appendChild(usd);
+  card.appendChild(delta); card.appendChild(live);
+  card.addEventListener("click", ()=> openTradingView(it));
+
+  kospiCardEls.set(it.id, { priceEl:price, usdEl:usd, deltaEl:delta, dotEl:ld, isIndex, def:it });
+  return card;
+}
+
+function buildKospiBoard(){
+  const idxIt = INSTRUMENTS.find(x => x.kospiIndex);
+  if(idxIt) kGrid.appendChild(makeKospiCard(idxIt, true));
+  for(const it of INSTRUMENTS.filter(x => x.kospi && !x.kospiIndex)){
+    kGrid.appendChild(makeKospiCard(it, false));
+  }
+}
+buildKospiBoard();
+
+function updateKospiCard(id){
+  const c = kospiCardEls.get(id);
+  if(!c) return;
+  const v = lastValue.get(id);
+  const fx = usdKrwRate();
+
+  if(c.isIndex){
+    if(v && isFinite(v.last)){
+      c.priceEl.textContent = fmtPrice(v.last);
+      setDot(c.dotEl, "LIVE");
+      if(isFinite(v.pct)){
+        const up = v.pct >= 0;
+        c.deltaEl.textContent = (up?"▲ ":"▼ ") + fmtPct(Math.abs(v.pct));
+        c.deltaEl.className = "kDelta " + (up?"up":"down");
+      }
+    }else{
+      c.priceEl.textContent = "준비 중";
+      c.deltaEl.textContent = "지수 데이터 연결 대기";
+      c.deltaEl.className = "kDelta";
+      setDot(c.dotEl, "DEAD");
+    }
+    return;
+  }
+
+  if(!v || !isFinite(v.last)){ setDot(c.dotEl, "DEAD"); return; }
+  setDot(c.dotEl, "LIVE");
+
+  const scale = c.def.krwScale || 1;
+  const usd = v.last;
+  c.usdEl.textContent = "$ " + fmtPrice(usd) + " USD";
+
+  if(isFinite(fx)){
+    c.priceEl.innerHTML = `<span class="won">₩</span>` + fmtKRW(usd * fx * scale);
+  }else{
+    c.priceEl.innerHTML = `<span class="won">₩</span>-`;
+  }
+
+  if(isFinite(v.pct)){
+    const up = v.pct >= 0;
+    let amt = "";
+    const dayOpen = dailyOpenById.get(id);
+    if(isFinite(fx) && isFinite(dayOpen) && dayOpen > 0){
+      const amtKrw = (usd - dayOpen) * fx * scale;
+      amt = " · " + (amtKrw >= 0 ? "+" : "−") + fmtKRW(Math.abs(amtKrw)) + "원";
+    }
+    c.deltaEl.textContent = (up?"▲ ":"▼ ") + fmtPct(Math.abs(v.pct)) + amt;
+    c.deltaEl.className = "kDelta " + (up?"up":"down");
+  }else{
+    c.deltaEl.textContent = "전일 대비 –";
+    c.deltaEl.className = "kDelta";
+  }
+}
+function updateAllKospiCards(){
+  for(const id of kospiCardEls.keys()) updateKospiCard(id);
+  const fx = usdKrwRate();
+  if(usdKrwTop) usdKrwTop.textContent = isFinite(fx) ? ("₩" + fmtKRW(fx)) : "-";
+}
+
 /* ===== Filters + Sort ===== */
 const filterAll   = document.getElementById("filterAll");
+const filterKospi = document.getElementById("filterKospi");
 const filterCrypto= document.getElementById("filterCrypto");
 const filterStock = document.getElementById("filterStock");
 const filterIndex = document.getElementById("filterIndex");
@@ -476,6 +663,7 @@ const filterEnergy= document.getElementById("filterEnergy");
 
 function setFilter(mode){
   filterAll.classList.toggle("on", mode==="ALL");
+  filterKospi.classList.toggle("on", mode==="KOSPI");
   filterCrypto.classList.toggle("on", mode==="Crypto");
   filterStock.classList.toggle("on", mode==="Stock");
   filterIndex.classList.toggle("on", mode==="Index");
@@ -487,6 +675,7 @@ function setFilter(mode){
     const t = row.dataset.type;
     const show =
       (mode==="ALL") ||
+      (mode==="KOSPI" && row.dataset.kospi==="1") ||
       (mode==="Crypto" && t==="Crypto") ||
       (mode==="Stock" && t==="Stock") ||
       (mode==="Index" && t==="Index") ||
@@ -498,6 +687,7 @@ function setFilter(mode){
   applySort();
 }
 filterAll.onclick    = () => setFilter("ALL");
+filterKospi.onclick  = () => setFilter("KOSPI");
 filterCrypto.onclick = () => setFilter("Crypto");
 filterStock.onclick  = () => setFilter("Stock");
 filterIndex.onclick  = () => setFilter("Index");
@@ -560,6 +750,7 @@ function scheduleRender(){
       r.row.dataset.sortVol = String(isFinite(v.vol) ? v.vol : -999999);
     }
     pendingRender.clear();
+    updateAllKospiCards();
     lastAnyUpdate.textContent = nowHHMMSS();
     applySort();
   });
@@ -578,9 +769,16 @@ function resolvePct(id, last, fallbackPct, dayOpen){
   return NaN;
 }
 
-function applyUpdate(id, last, pct, vol, dayOpen){
+function applyUpdate(id, last, pct, vol, dayOpen, src){
   const resolvedPct = resolvePct(id, last, pct, dayOpen);
-  lastValue.set(id, { last, pct: resolvedPct, vol, ts: Date.now() });
+  const prev = lastValue.get(id);
+  lastValue.set(id, {
+    last,
+    pct: resolvedPct,
+    vol: isFinite(vol) ? vol : (prev ? prev.vol : NaN),
+    ts: Date.now(),
+    src: src || (prev ? prev.src : undefined)
+  });
   pendingRender.add(id);
   scheduleRender();
 }
@@ -614,22 +812,30 @@ function connectBinance(){
   wsBinance.onmessage = (ev)=>{
     try{
       const msg = JSON.parse(ev.data);
-      if(msg.result === null || msg.id) return; // SUBSCRIBE ack
-      const d = msg.data || msg;
-      const stream = msg.stream || "";
-      if(!d) return;
+      if(!msg || typeof msg !== "object") return;
+      if(msg.id !== undefined || msg.result === null) return; // SUBSCRIBE ack/에러 응답
+      const d = msg.data || msg;   // /stream(래핑) vs /ws(raw) 둘 다 대응
+      if(!d || typeof d !== "object") return;
 
-      if(stream.endsWith("@kline_1d") && d.k && d.k.s){
-        const id = "B:" + d.k.s;
+      // 일봉 캔들: 시가(변동률 기준) 저장 + 종가(가격 틱 폴백)
+      // raw /ws 에서는 msg.stream 이 없으므로 이벤트 타입으로 판별해야 함(기존 버그 수정)
+      if(d.k && (d.k.s || d.s)){
+        const sym = d.k.s || d.s;
+        const id = "B:" + sym;
         const dayOpen = parseFloat(d.k.o);
         if(isFinite(dayOpen) && dayOpen > 0) dailyOpenById.set(id, dayOpen);
+        const kc = parseFloat(d.k.c);
+        if(isFinite(kc)) applyUpdate(id, kc, NaN, NaN, dayOpen, "BINANCE");
         return;
       }
 
-      if(!d.s) return;
-      const id = "B:"+d.s;
-      const last = parseFloat(d.c), pct=parseFloat(d.P), vol=parseFloat(d.q);
-      if(isFinite(last)) applyUpdate(id, last, pct, vol);
+      // 24h 티커: 가격/거래대금 (변동률은 일봉 시가 기준으로 resolvePct 계산)
+      if(d.s && (d.e === "24hrTicker" || d.c !== undefined)){
+        const id = "B:" + d.s;
+        const last = parseFloat(d.c), vol = parseFloat(d.q);
+        if(isFinite(last)) applyUpdate(id, last, NaN, vol, NaN, "BINANCE");
+        return;
+      }
     }catch(_){}
   };
   wsBinance.onerror = ()=>setDot(dotBinance,"DEAD");
@@ -642,6 +848,54 @@ function queueBinanceReconnect(){
     connectBinance();
     binanceBackoff = Math.min(Math.floor(binanceBackoff*1.6), 10000);
   }, binanceBackoff);
+}
+
+/* ===== Hyperliquid WS (크립토 메이저 폴백 · 한국에서도 접속 가능) =====
+   바이낸스 선물은 한국에서 접속이 막혀(geo-block) 크립토가 비어 보일 수 있어요.
+   Hyperliquid allMids 로 빈 자리를 채우고, 바이낸스가 4초 내 갱신 중이면 양보해요. */
+const dotHyper = document.getElementById("dotHyper");
+let wsHyper=null, hyperTimer=null, hyperBackoff=800;
+const HYPER_TO_ID = new Map(); // Hyperliquid 코인명 -> 인스트루먼트 id
+for(const s of BINANCE_SYMBOLS.crypto){
+  HYPER_TO_ID.set(s.replace("USDT",""), "B:"+s);
+}
+function connectHyperliquid(){
+  if(wsHyper && (wsHyper.readyState===WebSocket.OPEN || wsHyper.readyState===WebSocket.CONNECTING)) return;
+  if(hyperTimer){ clearTimeout(hyperTimer); hyperTimer=null; }
+  setDot(dotHyper,"DEAD");
+  try{ wsHyper = new WebSocket("wss://api.hyperliquid.xyz/ws"); }
+  catch(e){ queueHyperReconnect(); return; }
+
+  wsHyper.onopen = ()=>{
+    hyperBackoff=800;
+    setDot(dotHyper,"LIVE");
+    try{ wsHyper.send(JSON.stringify({ method:"subscribe", subscription:{ type:"allMids" } })); }catch(_){}
+  };
+  wsHyper.onmessage = (ev)=>{
+    try{
+      const msg = JSON.parse(ev.data);
+      if(!msg || msg.channel !== "allMids" || !msg.data || !msg.data.mids) return;
+      const mids = msg.data.mids;
+      const now = Date.now();
+      for(const [coin, id] of HYPER_TO_ID){
+        const px = parseFloat(mids[coin]);
+        if(!isFinite(px)) continue;
+        const cur = lastValue.get(id);
+        if(cur && cur.src === "BINANCE" && (now - cur.ts) < 4000) continue; // 바이낸스 우선
+        applyUpdate(id, px, NaN, NaN, NaN, "HYPER");
+      }
+    }catch(_){}
+  };
+  wsHyper.onerror = ()=>setDot(dotHyper,"DEAD");
+  wsHyper.onclose = ()=>{ setDot(dotHyper,"DEAD"); queueHyperReconnect(); };
+}
+function queueHyperReconnect(){
+  if(hyperTimer) return;
+  hyperTimer = setTimeout(()=> {
+    hyperTimer=null;
+    connectHyperliquid();
+    hyperBackoff = Math.min(Math.floor(hyperBackoff*1.6), 10000);
+  }, hyperBackoff);
 }
 
 /* ===== MEXC WS ===== */
@@ -752,7 +1006,7 @@ function connectMexc(){
         if(id && id !== "__FX_BASE__" && isFinite(last)){
           // dayOpen은 Day1 kline에서만 저장해서 일봉 기준으로 계산
           // 일봉 시가 수신 전에는 resolvePct()가 NaN을 반환 => UI에 '-' 표시
-          applyUpdate(id, last, pct24h, vol, NaN);
+          applyUpdate(id, last, pct24h, vol, NaN, "MEXC");
         }
       }
     }catch(_){}
@@ -952,11 +1206,14 @@ window.addEventListener("keydown", (e)=>{ if(e.key === "Escape" && tvView.style.
 function closeAll(){
   try{ wsBinance && wsBinance.close(); }catch(_){}
   try{ wsMexc && wsMexc.close(); }catch(_){}
-  wsBinance = wsMexc = null;
+  try{ wsHyper && wsHyper.close(); }catch(_){}
+  wsBinance = wsMexc = wsHyper = null;
   if(mexcPing){ clearInterval(mexcPing); mexcPing=null; }
   if(frankfurterTimer){ clearInterval(frankfurterTimer); frankfurterTimer=null; }
+  if(hyperTimer){ clearTimeout(hyperTimer); hyperTimer=null; }
   setDot(dotBinance,"DEAD");
   setDot(dotMexc,"DEAD");
+  setDot(dotHyper,"DEAD");
 }
 document.getElementById("reconnectBtn").onclick = ()=> {
   closeAll();
@@ -964,6 +1221,7 @@ document.getElementById("reconnectBtn").onclick = ()=> {
   pendingRender.clear();
   dailyOpenById.clear();
   connectBinance();
+  connectHyperliquid();
   connectMexc();
   startFrankfurterFx();
 };
@@ -971,14 +1229,17 @@ document.getElementById("reconnectBtn").onclick = ()=> {
 window.addEventListener("visibilitychange", ()=> {
   if(!document.hidden){
     if(!wsBinance || wsBinance.readyState !== WebSocket.OPEN) connectBinance();
+    if(!wsHyper || wsHyper.readyState !== WebSocket.OPEN) connectHyperliquid();
     if(!wsMexc || wsMexc.readyState !== WebSocket.OPEN) connectMexc();
   }
 });
 
 /* ===== Start ===== */
 connectBinance();
+connectHyperliquid();
 connectMexc();
 startFrankfurterFx();
+updateAllKospiCards();
 applySort();
 </script>
 </body>
