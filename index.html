@@ -153,6 +153,8 @@
     .kDelta{font-variant-numeric:tabular-nums;font-weight:700;font-size:13px;margin-top:8px;color:var(--muted)}
     .kDelta.up{color:var(--ko-up)}    /* 한국식: 상승 빨강 */
     .kDelta.down{color:var(--ko-down)}  /* 하락 파랑 */
+    .kCap{font-size:11.5px;color:var(--dim);margin-top:7px}
+    .kCap b{color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums}
     .kLive{display:flex;align-items:center;gap:6px;color:var(--dim);font-size:11px;margin-top:11px;border-top:1px solid var(--line);padding-top:10px}
 
     /* TV view */
@@ -531,16 +533,18 @@ for(const fx of FRANKFURTER_FX){
    해외가(USD) × USD/KRW × krwScale = 원화 추정가.
    ※ 선물 1계약 가격이 실제 1주 가격과 배수가 다를 수 있어요. 그땐 krwScale로 보정하세요. */
 // 트레이딩뷰는 KRX 실시간을 막아 국장 심볼이 안 떠서, MEXC 토큰화 선물(표시 티커 …USDT.P)로 연결해요.
+// shares = 발행주식수(보통주). 시총 = 원화 추정가 × shares 로 라이브 계산해요.
+//   삼성·SK하이닉스는 제공해주신 DART 기준값, 현대차는 통상치(오픈다트로 교정 가능).
 const KOSPI_DEFS = [
-  { base:"SAMSUNG", krLabel:"삼성전자",   sub:"005930 · Samsung Elec.", logo:"삼성", color:"#1428A0", tvSymbol:"MEXC:SAMSUNGUSDT.P", krwScale:1 },
-  { base:"SKHYNIX", krLabel:"SK하이닉스", sub:"000660 · SK hynix",       logo:"SK",  color:"#E60012", tvSymbol:"MEXC:SKHYNIXUSDT.P", krwScale:1 },
-  { base:"HYUNDAI", krLabel:"현대차",     sub:"005380 · Hyundai Motor",  logo:"현대", color:"#002C5F", tvSymbol:"MEXC:HYUNDAIUSDT.P", krwScale:1 },
+  { base:"SAMSUNG", krLabel:"삼성전자",   sub:"005930 · Samsung Elec.", logo:"삼성", color:"#1428A0", tvSymbol:"MEXC:SAMSUNGUSDT.P", krwScale:1, shares:5846278608 },
+  { base:"SKHYNIX", krLabel:"SK하이닉스", sub:"000660 · SK hynix",       logo:"SK",  color:"#E60012", tvSymbol:"MEXC:SKHYNIXUSDT.P", krwScale:1, shares:712702365 },
+  { base:"HYUNDAI", krLabel:"현대차",     sub:"005380 · Hyundai Motor",  logo:"현대", color:"#002C5F", tvSymbol:"MEXC:HYUNDAIUSDT.P", krwScale:1, shares:209416191 },
 ];
 for(const k of KOSPI_DEFS){
   addInstrument({
     id:"M:"+k.base, ex:"MEXC", type:"Stock", display:k.base, label:k.base, base:k.base,
     krLabel:k.krLabel, sub:k.sub, logo:k.logo, color:k.color, tvSymbol:k.tvSymbol,
-    krwScale:k.krwScale, kospi:true
+    krwScale:k.krwScale, shares:k.shares, kospi:true
   });
 }
 // KOSPI 지수(있으면 라이브)
@@ -646,6 +650,16 @@ function usdKrwRate(){
   return (v && isFinite(v.last)) ? v.last : NaN;
 }
 const fmtKRW = (n) => isFinite(n) ? new Intl.NumberFormat("ko-KR",{maximumFractionDigits:0}).format(n) : "-";
+// 시가총액을 '조/억' 단위로 (예: 2,000조원 / 1,969조 4,000억원)
+function fmtMarketCap(krw){
+  if(!isFinite(krw) || krw <= 0) return "-";
+  const jo = Math.floor(krw / 1e12);
+  const eok = Math.round((krw - jo * 1e12) / 1e8);
+  if(jo >= 1){
+    return jo.toLocaleString("ko-KR") + "조" + (eok > 0 ? " " + eok.toLocaleString("ko-KR") + "억" : "") + "원";
+  }
+  return Math.round(krw / 1e8).toLocaleString("ko-KR") + "억원";
+}
 
 function makeKospiCard(it, mode){
   // mode: "stock"(원화 환산) · "quote"(USD/지수 값) · "index"(KOSPI 지수)
@@ -671,6 +685,11 @@ function makeKospiCard(it, mode){
   const usd = document.createElement("div"); usd.className="kUsd"; usd.textContent = isStock ? "$ -" : "";
   const delta = document.createElement("div"); delta.className="kDelta"; delta.textContent = "전일 대비 –";
 
+  let cap = null;
+  if(isStock && isFinite(it.shares)){
+    cap = document.createElement("div"); cap.className="kCap"; cap.innerHTML = `시총 <b>-</b>`;
+  }
+
   const live = document.createElement("div"); live.className="kLive";
   const ld = document.createElement("span"); ld.className="dot";
   const lt = document.createElement("span");
@@ -680,10 +699,12 @@ function makeKospiCard(it, mode){
 
   card.appendChild(top); card.appendChild(price);
   if(isStock) card.appendChild(usd);
-  card.appendChild(delta); card.appendChild(live);
+  card.appendChild(delta);
+  if(cap) card.appendChild(cap);
+  card.appendChild(live);
   card.addEventListener("click", ()=> openTradingView(it));
 
-  kospiCardEls.set(it.id, { priceEl:price, usdEl:usd, deltaEl:delta, dotEl:ld, mode, def:it });
+  kospiCardEls.set(it.id, { priceEl:price, usdEl:usd, deltaEl:delta, capEl:cap, dotEl:ld, mode, def:it });
   return card;
 }
 
@@ -737,6 +758,15 @@ function updateKospiCard(id){
     c.priceEl.innerHTML = `<span class="won">₩</span>` + fmtKRW(usd * fx * scale);
   }else{
     c.priceEl.innerHTML = `<span class="won">₩</span>-`;
+  }
+
+  // 시총 = 원화 추정가 × 발행주식수 (라이브)
+  if(c.capEl){
+    const krwPrice = isFinite(fx) ? usd * fx * scale : NaN;
+    const shares = c.def.shares;
+    c.capEl.innerHTML = (isFinite(krwPrice) && isFinite(shares) && shares > 0)
+      ? `시총 <b>${fmtMarketCap(krwPrice * shares)}</b>`
+      : `시총 <b>-</b>`;
   }
 
   if(isFinite(v.pct)){
