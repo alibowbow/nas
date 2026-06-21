@@ -801,6 +801,7 @@ function updateAllKospiCards(){
 }
 
 /* ===== Filters + Sort ===== */
+const kospiBoard  = document.getElementById("kospiBoard");
 const filterAll   = document.getElementById("filterAll");
 const filterKospi = document.getElementById("filterKospi");
 const filterCrypto= document.getElementById("filterCrypto");
@@ -819,6 +820,9 @@ function setFilter(mode){
   filterFX.classList.toggle("on", mode==="FX");
   filterCommo.classList.toggle("on", mode==="Commodity");
   filterEnergy.classList.toggle("on", mode==="Energy");
+
+  // 코스피 보드는 '전체'·'코스피' 탭에서만 노출, 그 외 카테고리 탭에선 숨김
+  if(kospiBoard) kospiBoard.style.display = (mode==="ALL" || mode==="KOSPI") ? "" : "none";
 
   for(const {row} of rows.values()){
     const t = row.dataset.type;
@@ -1455,7 +1459,7 @@ connectMexc();
 startFrankfurterFx();
 startCoinGecko();
 updateAllKospiCards();
-applySort();
+setFilter("ALL"); // 처음 로드 = '전체' 탭: 코스피 보드 + 전체 목록 노출
 </script>
 </body>
 </html>
