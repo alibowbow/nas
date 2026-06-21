@@ -4,120 +4,173 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>코스피 보드 · TradFi/Crypto Live (MEXC · Hyperliquid · Binance)</title>
+  <meta name="theme-color" content="#0E1117" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#EEF1F5" media="(prefers-color-scheme: light)" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script>
+    /* 테마 선적용(FOUC 방지): 저장값 → 시스템설정 → 다크 */
+    (function(){
+      try{
+        var t = localStorage.getItem('theme');
+        if(t!=='light' && t!=='dark') t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+      }catch(e){ document.documentElement.setAttribute('data-theme','dark'); }
+    })();
+  </script>
   <style>
     :root{
-      --bg:#0b1220; --card:#0f1a2e; --card2:#0d1628;
-      --text:#e6eefc; --muted:#93a4c7; --line:rgba(255,255,255,.08);
-      --up:#22c55e; --down:#ef4444; --shadow:0 10px 30px rgba(0,0,0,.35);
+      color-scheme:dark;
+      --bg:#0E1117;
+      --grad-1:rgba(59,130,246,.14); --grad-2:rgba(46,190,133,.07);
+      --surface:#161B22; --surface-2:#1B212B; --surface-hover:#1F2630;
+      --glass:rgba(20,25,33,.72);
+      --card:#161B22; --card2:#1B212B;
+      --text:#E6EDF3; --muted:#9AA5B1; --dim:#6E7681;
+      --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.13);
+      --brand:#3B82F6; --brand-soft:rgba(59,130,246,.16); --brand-line:rgba(59,130,246,.42);
+      --up:#2EBE85; --up-soft:rgba(46,190,133,.15); --up-text:#46d39b;
+      --down:#F6465D; --down-soft:rgba(246,70,93,.15); --down-text:#ff7d8c;
+      --ko-up:#F6465D; --ko-down:#5193FF;
+      --shadow:0 10px 34px rgba(0,0,0,.46); --shadow-sm:0 2px 12px rgba(0,0,0,.30);
+      --radius:16px; --radius-sm:12px;
+      --t-stock:#FFCB6B; --t-crypto:#5FD3E6; --t-index:#B7A5FF; --t-fx:#7FB5FF; --t-commo:#7FE0B5; --t-energy:#FF9D9D; --t-ex:#9DA8FF;
+    }
+    :root[data-theme="light"]{
+      color-scheme:light;
+      --bg:#EEF1F5;
+      --grad-1:rgba(49,130,246,.07); --grad-2:rgba(49,130,246,.035);
+      --surface:#FFFFFF; --surface-2:#F4F6F9; --surface-hover:#EEF2F6;
+      --glass:rgba(255,255,255,.80);
+      --card:#FFFFFF; --card2:#F4F6F9;
+      --text:#171C26; --muted:#5E6873; --dim:#9098A3;
+      --line:rgba(13,24,43,.08); --line-2:rgba(13,24,43,.13);
+      --brand:#3182F6; --brand-soft:rgba(49,130,246,.10); --brand-line:rgba(49,130,246,.32);
+      --up:#11A05E; --up-soft:rgba(17,160,94,.10); --up-text:#0c8a4f;
+      --down:#E5384A; --down-soft:rgba(229,56,74,.09); --down-text:#cf2c3d;
+      --ko-up:#E5384A; --ko-down:#3182F6;
+      --shadow:0 8px 26px rgba(31,45,75,.09); --shadow-sm:0 1px 6px rgba(31,45,75,.07);
+      --t-stock:#9A6B00; --t-crypto:#0B7E93; --t-index:#5B49C9; --t-fx:#2766C7; --t-commo:#0F7A52; --t-energy:#CB3A33; --t-ex:#4350C2;
     }
     *{box-sizing:border-box}
     body{
       margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+      font-family:"Inter","Pretendard",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
       background:
-        radial-gradient(900px 600px at 10% 0%, rgba(80,120,255,.18), transparent 55%),
-        radial-gradient(800px 500px at 90% 10%, rgba(34,197,94,.14), transparent 55%),
+        radial-gradient(1000px 640px at 8% -6%, var(--grad-1), transparent 60%),
+        radial-gradient(900px 560px at 96% 4%, var(--grad-2), transparent 55%),
         var(--bg);
+      background-attachment:fixed;
       color:var(--text);
+      -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+      font-feature-settings:"tnum" 1;
+      transition:background-color .3s ease, color .2s ease;
     }
-    .wrap{max-width:1240px;margin:0 auto;padding:22px 16px 40px}
+    .wrap{max-width:1200px;margin:0 auto;padding:20px 16px 56px}
     .top{
-      display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;
-      padding:16px 16px;border:1px solid var(--line);border-radius:18px;background:rgba(15,26,46,.7);
-      box-shadow: var(--shadow);backdrop-filter: blur(10px);
+      display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+      padding:16px 18px;border:1px solid var(--line);border-radius:var(--radius);
+      background:var(--glass); box-shadow:var(--shadow);
+      backdrop-filter:blur(16px) saturate(1.3); -webkit-backdrop-filter:blur(16px) saturate(1.3);
     }
-    .title{display:flex;flex-direction:column;gap:4px}
-    .title h1{margin:0;font-size:18px;letter-spacing:.2px}
-    .title .sub{color:var(--muted);font-size:12.5px;line-height:1.35}
-    .status{display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:12.5px;}
-    .dot{width:10px;height:10px;border-radius:999px;background:#64748b;display:inline-block;box-shadow:0 0 0 4px rgba(100,116,139,.15);vertical-align:middle;}
-    .dot.live{background:var(--up);box-shadow:0 0 0 4px rgba(34,197,94,.16)}
-    .dot.dead{background:var(--down);box-shadow:0 0 0 4px rgba(239,68,68,.16)}
+    .title{display:flex;flex-direction:column;gap:5px}
+    .title h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.01em}
+    .title .sub{color:var(--muted);font-size:12.5px;line-height:1.4}
+    .status{display:flex;gap:11px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:12.5px;}
+    .status b{color:var(--text);font-weight:600}
+    .dot{width:9px;height:9px;border-radius:999px;background:var(--dim);display:inline-block;vertical-align:middle;transition:background .2s ease, box-shadow .2s ease;}
+    .dot.live{background:var(--up);box-shadow:0 0 0 3px var(--up-soft)}
+    .dot.dead{background:var(--down);box-shadow:0 0 0 3px var(--down-soft)}
     .btn{
-      border:1px solid var(--line);
-      background: linear-gradient(180deg, rgba(31,42,68,.9), rgba(15,26,46,.9));
-      color:var(--text);padding:10px 12px;border-radius:14px;font-size:13px;cursor:pointer;
-      transition: transform .06s ease, filter .15s ease;
+      border:1px solid var(--line-2);
+      background:var(--surface-2); color:var(--text);
+      padding:9px 13px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;
+      transition:transform .06s ease, background .15s ease, border-color .15s ease;
     }
-    .btn:active{transform: translateY(1px)}
-    .filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .btn:hover{background:var(--surface-hover);border-color:var(--brand-line)}
+    .btn:active{transform:translateY(1px)}
+    .btn.icon{padding:8px 11px;font-size:15px;line-height:1;display:inline-flex;align-items:center;justify-content:center}
+    .filters{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
     .pill{
-      padding:8px 10px;border-radius:999px;border:1px solid var(--line);
-      background: rgba(31,42,68,.7);color:var(--muted);font-size:12.5px;cursor:pointer;user-select:none;
+      padding:7px 13px;border-radius:999px;border:1px solid var(--line);
+      background:var(--surface-2);color:var(--muted);font-size:12.5px;font-weight:600;cursor:pointer;user-select:none;
+      transition:background .15s ease, color .15s ease, border-color .15s ease;
     }
-    .pill.on{color:var(--text);border-color:rgba(80,120,255,.35);background:rgba(80,120,255,.12)}
+    .pill:hover{background:var(--surface-hover);color:var(--text)}
+    .pill.on{color:var(--brand);border-color:var(--brand-line);background:var(--brand-soft)}
     .sortWrap{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:12.5px}
-    select{border:1px solid var(--line);background: rgba(31,42,68,.7);color:var(--text);padding:9px 10px;border-radius:12px;font-size:13px;outline:none;}
-    .grid{margin-top:14px;border:1px solid var(--line);border-radius:18px;overflow:hidden;background: rgba(15,26,46,.55);box-shadow: var(--shadow);backdrop-filter: blur(8px);}
-    .hdr, .row{display:grid;grid-template-columns: 1.65fr .95fr .75fr .85fr;gap:12px;padding:14px 14px;align-items:center;}
-    .hdr{background: rgba(13,22,40,.75);border-bottom:1px solid var(--line);color:var(--muted);font-size:12px;letter-spacing:.3px;}
-    .row{border-bottom:1px solid var(--line);background: rgba(15,26,46,.55);cursor:pointer}
-    .row:hover{filter: brightness(1.05)}
-    .row:nth-child(even){background: rgba(13,22,40,.48)}
+    select{border:1px solid var(--line-2);background:var(--surface-2);color:var(--text);padding:9px 12px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;outline:none;cursor:pointer;}
+    select:hover{border-color:var(--brand-line)}
+    .grid{margin-top:16px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--surface);box-shadow:var(--shadow);}
+    .hdr, .row{display:grid;grid-template-columns: 1.65fr .95fr .75fr .85fr;gap:12px;padding:14px 16px;align-items:center;}
+    .hdr{background:var(--surface-2);border-bottom:1px solid var(--line);color:var(--dim);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
+    .row{border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s ease}
+    .row:hover{background:var(--surface-hover)}
     .row:last-child{border-bottom:none}
     .sym{display:flex;gap:10px;align-items:center;min-width:0}
-    .sym .left{display:flex;flex-direction:column;gap:4px;min-width:0}
-    .sym .code{font-weight:900;letter-spacing:.2px;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .sym .meta{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12.5px;flex-wrap:wrap}
-    .tag{font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--line);background: rgba(31,42,68,.6);color:var(--muted);}
-    .tag.stock{color:#ffd670;border-color:rgba(255,214,112,.2);background:rgba(255,214,112,.08)}
-    .tag.crypto{color:#67e8f9;border-color:rgba(103,232,249,.24);background:rgba(103,232,249,.08)}
-    .tag.index{color:#c4b5fd;border-color:rgba(196,181,253,.22);background:rgba(196,181,253,.08)}
-    .tag.fx{color:#93c5fd;border-color:rgba(147,197,253,.22);background:rgba(147,197,253,.08)}
-    .tag.commo{color:#a7f3d0;border-color:rgba(167,243,208,.2);background:rgba(167,243,208,.08)}
-    .tag.energy{color:#fca5a5;border-color:rgba(252,165,165,.22);background:rgba(252,165,165,.08)}
-    .tag.ex{color:#a5b4fc;border-color:rgba(165,180,252,.22);background:rgba(165,180,252,.08)}
-    .price{font-variant-numeric: tabular-nums;font-size:22px;font-weight:900;letter-spacing:.2px}
-    .usd{color:var(--muted);font-size:12px;margin-top:4px;font-variant-numeric: tabular-nums}
-    .chg{justify-self:end;font-variant-numeric: tabular-nums;font-weight:900;padding:10px 12px;border-radius:14px;min-width:110px;text-align:center;border:1px solid var(--line);background: rgba(31,42,68,.55);}
-    .chg.up{background: rgba(34,197,94,.14);border-color: rgba(34,197,94,.22);color:#bbf7d0}
-    .chg.down{background: rgba(239,68,68,.14);border-color: rgba(239,68,68,.22);color:#fecaca}
+    .sym .left{display:flex;flex-direction:column;gap:5px;min-width:0}
+    .sym .code{font-weight:800;letter-spacing:-.01em;font-size:16.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .sym .meta{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:12px;flex-wrap:wrap}
+    .tag{font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:7px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);}
+    .tag.stock{color:var(--t-stock)}
+    .tag.crypto{color:var(--t-crypto)}
+    .tag.index{color:var(--t-index)}
+    .tag.fx{color:var(--t-fx)}
+    .tag.commo{color:var(--t-commo)}
+    .tag.energy{color:var(--t-energy)}
+    .tag.ex{color:var(--t-ex)}
+    .price{font-variant-numeric: tabular-nums;font-size:19px;font-weight:800;letter-spacing:-.01em}
+    .usd{color:var(--muted);font-size:12px;margin-top:3px;font-variant-numeric: tabular-nums}
+    .chg{justify-self:end;font-variant-numeric: tabular-nums;font-weight:700;padding:8px 12px;border-radius:10px;min-width:108px;text-align:center;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);}
+    .chg.up{background:var(--up-soft);border-color:transparent;color:var(--up-text)}
+    .chg.down{background:var(--down-soft);border-color:transparent;color:var(--down-text)}
     .vol{color:var(--muted);font-size:12.5px;font-variant-numeric: tabular-nums;justify-self:end}
-    .note{margin-top:10px;color:var(--muted);font-size:12.5px;line-height:1.45;padding:0 2px}
+    .note{margin-top:12px;color:var(--muted);font-size:12.5px;line-height:1.5;padding:0 2px}
+    .note b{color:var(--text);font-weight:600}
 
     /* KOSPI board */
-    .kospiBoard{margin-top:14px}
+    .kospiBoard{margin-top:18px}
     .kospiHead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:2px 2px 12px}
-    .kospiHead h2{margin:0;font-size:16px;letter-spacing:.2px}
-    .kospiHead .badge{font-size:11px;padding:3px 9px;border-radius:999px;border:1px solid rgba(252,165,165,.22);color:#fca5a5;background:rgba(252,165,165,.08)}
-    .kospiHead .src{color:var(--muted);font-size:12px;margin-left:auto}
+    .kospiHead h2{margin:0;font-size:16px;font-weight:800;letter-spacing:-.01em}
+    .kospiHead .badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid var(--ko-up);color:var(--ko-up);background:transparent}
+    .kospiHead .src{color:var(--dim);font-size:12px;margin-left:auto}
     .kGrid{display:grid;grid-template-columns:repeat(auto-fit, minmax(214px, 1fr));gap:12px}
     @media (max-width:560px){.kGrid{grid-template-columns:1fr 1fr}}
     @media (max-width:380px){.kGrid{grid-template-columns:1fr}}
-    .kCard{border:1px solid var(--line);border-radius:18px;padding:16px 16px 14px;background:rgba(15,26,46,.6);box-shadow:var(--shadow);backdrop-filter:blur(8px);cursor:pointer;transition:transform .06s ease, filter .15s ease}
-    .kCard:hover{filter:brightness(1.06)}
-    .kCard:active{transform:translateY(1px)}
-    .kCard.index{background:linear-gradient(180deg, rgba(40,52,84,.7), rgba(15,26,46,.7));border-color:rgba(196,181,253,.18)}
+    .kCard{position:relative;border:1px solid var(--line);border-radius:var(--radius);padding:16px 16px 14px;background:var(--surface);box-shadow:var(--shadow-sm);cursor:pointer;transition:transform .12s ease, box-shadow .15s ease, border-color .15s ease}
+    .kCard:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-2)}
+    .kCard:active{transform:translateY(0)}
+    .kCard.index{background:linear-gradient(165deg, var(--brand-soft), transparent 70%), var(--surface)}
     .kTop{display:flex;align-items:center;gap:10px;min-width:0}
-    .kLogo{width:36px;height:36px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;color:#fff;flex:0 0 auto;letter-spacing:-.3px}
-    .kName{font-weight:800;font-size:15px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .kLogo{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff;flex:0 0 auto;letter-spacing:-.02em;box-shadow:var(--shadow-sm)}
+    .kName{font-weight:800;font-size:15px;line-height:1.15;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .kSub{color:var(--muted);font-size:11.5px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .kPrice{font-variant-numeric:tabular-nums;font-size:25px;font-weight:900;margin-top:12px;letter-spacing:.2px}
-    .kCard.index .kPrice{font-size:30px}
-    .kPrice .won{font-size:16px;color:var(--muted);margin-right:1px;font-weight:800}
+    .kPrice{font-variant-numeric:tabular-nums;font-size:25px;font-weight:800;margin-top:13px;letter-spacing:-.02em}
+    .kCard.index .kPrice{font-size:29px}
+    .kPrice .won{font-size:16px;color:var(--muted);margin-right:1px;font-weight:700}
     .kUsd{color:var(--muted);font-size:12px;margin-top:4px;font-variant-numeric:tabular-nums}
-    .kDelta{font-variant-numeric:tabular-nums;font-weight:800;font-size:13px;margin-top:8px;color:var(--muted)}
-    .kDelta.up{color:#ef4444}    /* 한국식: 상승 빨강 */
-    .kDelta.down{color:#3b82f6}  /* 하락 파랑 */
-    .kLive{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:11px;margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+    .kDelta{font-variant-numeric:tabular-nums;font-weight:700;font-size:13px;margin-top:8px;color:var(--muted)}
+    .kDelta.up{color:var(--ko-up)}    /* 한국식: 상승 빨강 */
+    .kDelta.down{color:var(--ko-down)}  /* 하락 파랑 */
+    .kLive{display:flex;align-items:center;gap:6px;color:var(--dim);font-size:11px;margin-top:11px;border-top:1px solid var(--line);padding-top:10px}
 
     /* TV view */
     #tvView{display:none}
     #tvBox{
-      margin-top:14px;
+      margin-top:16px;
       border:1px solid var(--line);
-      border-radius:18px;
+      border-radius:var(--radius);
       overflow:hidden;
-      background: rgba(15,26,46,.55);
+      background:var(--surface);
       box-shadow: var(--shadow);
-      backdrop-filter: blur(8px);
     }
     #tvHeader{
       display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
-      padding:14px 14px;border-bottom:1px solid var(--line);
-      background: rgba(13,22,40,.75);
+      padding:14px 16px;border-bottom:1px solid var(--line);
+      background:var(--surface-2);
     }
-    #tvTitle{font-weight:800}
+    #tvTitle{font-weight:800;letter-spacing:-.01em}
     #tvChart{height:72vh;min-height:520px}
     @media (max-width:760px){
       .hdr{display:none}
@@ -154,6 +207,7 @@
         <span id="lastAnyUpdate">-</span>
         <span class="muted">|</span>
         <button class="btn" id="reconnectBtn">재연결</button>
+        <button class="btn icon" id="themeBtn" title="다크/라이트 전환" aria-label="테마 전환">🌙</button>
       </div>
 
       <div class="filters">
@@ -249,6 +303,25 @@ function setDot(dot, state){
   dot.classList.remove("live","dead");
   if(state === "LIVE") dot.classList.add("live");
   if(state === "DEAD") dot.classList.add("dead");
+}
+
+/* ===== Theme (dark/light) ===== */
+const themeBtn = document.getElementById("themeBtn");
+function currentTheme(){
+  return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+}
+function applyTheme(t){
+  document.documentElement.setAttribute("data-theme", t);
+  try{ localStorage.setItem("theme", t); }catch(e){}
+  if(themeBtn) themeBtn.textContent = (t === "light") ? "☀️" : "🌙";
+  // 차트가 열려 있으면 테마 맞춰 다시 그려요
+  if(tvView.style.display === "block" && tvWidget && currentTvInstrument){
+    openTradingView(currentTvInstrument);
+  }
+}
+if(themeBtn){
+  themeBtn.textContent = (currentTheme() === "light") ? "☀️" : "🌙";
+  themeBtn.addEventListener("click", ()=> applyTheme(currentTheme() === "light" ? "dark" : "light"));
 }
 const nowHHMMSS = () => {
   const d = new Date();
@@ -457,10 +530,11 @@ for(const fx of FRANKFURTER_FX){
    삼성전자·SK하이닉스·현대차는 MEXC에 <NAME>STOCK_USDT 형태로 상장돼 있어요.
    해외가(USD) × USD/KRW × krwScale = 원화 추정가.
    ※ 선물 1계약 가격이 실제 1주 가격과 배수가 다를 수 있어요. 그땐 krwScale로 보정하세요. */
+// 트레이딩뷰는 KRX 실시간을 막아 국장 심볼이 안 떠서, MEXC 토큰화 선물(표시 티커 …USDT.P)로 연결해요.
 const KOSPI_DEFS = [
-  { base:"SAMSUNG", krLabel:"삼성전자",   sub:"005930 · Samsung Elec.", logo:"삼성", color:"#1428A0", tvSymbol:"KRX:005930", krwScale:1 },
-  { base:"SKHYNIX", krLabel:"SK하이닉스", sub:"000660 · SK hynix",       logo:"SK",  color:"#E60012", tvSymbol:"KRX:000660", krwScale:1 },
-  { base:"HYUNDAI", krLabel:"현대차",     sub:"005380 · Hyundai Motor",  logo:"현대", color:"#002C5F", tvSymbol:"KRX:005380", krwScale:1 },
+  { base:"SAMSUNG", krLabel:"삼성전자",   sub:"005930 · Samsung Elec.", logo:"삼성", color:"#1428A0", tvSymbol:"MEXC:SAMSUNGUSDT.P", krwScale:1 },
+  { base:"SKHYNIX", krLabel:"SK하이닉스", sub:"000660 · SK hynix",       logo:"SK",  color:"#E60012", tvSymbol:"MEXC:SKHYNIXUSDT.P", krwScale:1 },
+  { base:"HYUNDAI", krLabel:"현대차",     sub:"005380 · Hyundai Motor",  logo:"현대", color:"#002C5F", tvSymbol:"MEXC:HYUNDAIUSDT.P", krwScale:1 },
 ];
 for(const k of KOSPI_DEFS){
   addInstrument({
@@ -1243,6 +1317,7 @@ function startCoinGecko(){
 /* ===== TradingView View ===== */
 let tvLoaded = false;
 let tvWidget = null;
+let currentTvInstrument = null;
 
 function loadTvScript(){
   return new Promise((resolve, reject) => {
@@ -1257,10 +1332,11 @@ function loadTvScript(){
 
 async function openTradingView(it){
   const symbol = tvSymbolFor(it);
+  currentTvInstrument = it;
 
   listView.style.display = "none";
   tvView.style.display = "block";
-  tvTitle.textContent = `${it.display}`;
+  tvTitle.textContent = `${it.krLabel || it.display}`;
   tvSubtitle.textContent = `${it.ex} · ${symbol}`;
 
   tvChart.innerHTML = "";
@@ -1279,7 +1355,7 @@ async function openTradingView(it){
       symbol: symbol,
       interval: "1",
       timezone: "Asia/Seoul",
-      theme: "dark",
+      theme: currentTheme() === "light" ? "light" : "dark",
       style: "1",
       locale: "kr",
       allow_symbol_change: true,
@@ -1290,9 +1366,9 @@ async function openTradingView(it){
       container_id: containerId
     });
   }catch(e){
-    tvChart.innerHTML = `<div style="padding:16px;color:#93a4c7;">
-      TradingView 로드 실패. 아래 링크로 열어봐:<br/>
-      <a href="https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}" target="_blank" style="color:#e6eefc">TradingView에서 열기</a>
+    tvChart.innerHTML = `<div style="padding:16px;color:var(--muted);">
+      TradingView 로드에 실패했어요. 아래 링크로 열어보세요:<br/>
+      <a href="https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}" target="_blank" style="color:var(--brand)">TradingView에서 열기</a>
     </div>`;
   }
 }
