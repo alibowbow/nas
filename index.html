@@ -640,8 +640,7 @@ function buildRows(){
     priceWrap.classList.add("priceWrap");
 
     const price = document.createElement("div"); price.className="price"; price.textContent="-";
-    const usd = document.createElement("div"); usd.className="usd"; usd.textContent="$ -";
-    priceWrap.appendChild(price); priceWrap.appendChild(usd);
+    priceWrap.appendChild(price);
 
     const vol = document.createElement("div"); vol.className="vol"; vol.textContent="-";
     const chg = document.createElement("div"); chg.className="chg"; chg.textContent="-";
@@ -649,7 +648,7 @@ function buildRows(){
     row.appendChild(sym); row.appendChild(priceWrap); row.appendChild(vol); row.appendChild(chg);
     grid.appendChild(row);
 
-    rows.set(it.id, { row, priceEl:price, usdEl:usd, volEl:vol, chgEl:chg, def:it });
+    rows.set(it.id, { row, priceEl:price, volEl:vol, chgEl:chg, def:it });
 
     row.addEventListener("click", () => openTradingView(it));
   }
@@ -906,7 +905,6 @@ function scheduleRender(){
 
       const isUp = v.pct >= 0;
       r.priceEl.textContent = fmtPrice(v.last);
-      r.usdEl.textContent = "$ " + fmtPrice(v.last);
       r.volEl.textContent = isFinite(v.vol) ? (fmtVol(v.vol) + " USDT") : "-";
 
       r.chgEl.textContent = fmtPct(v.pct);
