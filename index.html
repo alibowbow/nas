@@ -1406,12 +1406,19 @@ function loadTvScript(){
 
 async function openTradingView(it){
   const symbol = tvSymbolFor(it);
+  const wasListView = (tvView.style.display !== "block");
   currentTvInstrument = it;
 
   listView.style.display = "none";
   tvView.style.display = "block";
   tvTitle.textContent = `${it.krLabel || it.display}`;
   tvSubtitle.textContent = `${it.ex} · ${symbol}`;
+
+  // 휴대폰/브라우저 뒤로가기로 목록에 복귀하도록 히스토리 항목 추가(사이트 이탈 방지).
+  // 이미 차트 화면이면(테마 전환 재렌더 등) 중복 push 안 함.
+  if(wasListView){
+    try{ history.pushState({ tv:true }, ""); }catch(_){}
+  }
 
   tvChart.innerHTML = "";
 
@@ -1451,8 +1458,13 @@ function goBack(){
   tvView.style.display = "none";
   listView.style.display = "block";
 }
-document.getElementById("backBtn").onclick = goBack;
-window.addEventListener("keydown", (e)=>{ if(e.key === "Escape" && tvView.style.display === "block") goBack(); });
+// 인앱 '뒤로'/ESC는 history.back()을 호출 → popstate에서 goBack 실행(휴대폰 뒤로가기와 동일 동작)
+document.getElementById("backBtn").onclick = ()=>{
+  if(tvView.style.display === "block") history.back(); else goBack();
+};
+window.addEventListener("keydown", (e)=>{ if(e.key === "Escape" && tvView.style.display === "block") history.back(); });
+// 휴대폰/브라우저 뒤로가기: 차트가 열려 있으면 사이트를 떠나지 않고 목록으로 복귀
+window.addEventListener("popstate", ()=>{ if(tvView.style.display === "block") goBack(); });
 
 /* ===== Reconnect + Start ===== */
 function closeAll(){
