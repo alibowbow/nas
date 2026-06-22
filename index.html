@@ -1060,7 +1060,7 @@ const mexcStockMap = new Map();   // base -> STOCK_USDT
 const mexcKlineToIds = new Map();     // symbol -> Set(instrumentId)
 const mexcKlineSubscribed = new Set(); // symbol already sub.kline Day1
 
-const CONTRACT_WARMUP_MS = 4500;
+const CONTRACT_WARMUP_MS = 2500;
 
 function connectMexc(){
   if(wsMexc && (wsMexc.readyState===WebSocket.OPEN || wsMexc.readyState===WebSocket.CONNECTING)) return;
@@ -1091,9 +1091,12 @@ function connectMexc(){
       mexcSubscribe(b, "__FX_BASE__");
     }
 
-    // contract 워밍업: STOCK 계약 맵 수집
-    wsMexc.send(JSON.stringify({ method:"sub.contract", gzip:false }));
+    // ① 워밍업을 기다리지 않고 즉시 종목 구독 시작(코스피 우선) → 첫 로딩 체감 단축
+    subscribeMexcFinal();
 
+    // ② 동시에 contract 워밍업으로 STOCK 정확 심볼을 수집해 빠진 것만 보충
+    //    (이미 구독한 심볼은 자동으로 건너뛰어요)
+    wsMexc.send(JSON.stringify({ method:"sub.contract", gzip:false }));
     setTimeout(()=> {
       try{ wsMexc.send(JSON.stringify({ method:"unsub.contract" })); }catch(_){}
       subscribeMexcFinal();
@@ -1222,32 +1225,38 @@ function baseCandidates(base){
 }
 
 function subscribeMexcFinal(){
-  const mexcRows = INSTRUMENTS.filter(x => x.ex === "MEXC" && (x.type==="Stock" || x.type==="Index" || x.type==="Energy" || x.type==="Commodity"));
+  const mexcRows = INSTRUMENTS
+    .filter(x => x.ex === "MEXC" && (x.type==="Stock" || x.type==="Index" || x.type==="Energy" || x.type==="Commodity"))
+    .sort((a,b)=> (b.kospi?1:0) - (a.kospi?1:0)); // 코스피 보드 종목을 큐 맨 앞으로
 
-  const queue = [];
-
-  for(const it of mexcRows){
+  // 종목별 후보 심볼 목록(이미 구독한 건 제외 → 워밍업 보충 패스가 헛돌지 않음)
+  const perInstrument = mexcRows.map(it => {
+    let syms;
     if(it.mexcSymbols && it.mexcSymbols.length){
-      for(const s of it.mexcSymbols) queue.push([s, it.id]);
-      continue;
+      syms = [...it.mexcSymbols];
+    }else if(it.type === "Index" && INDEX_MAP.has(it.base)){
+      syms = [...INDEX_MAP.get(it.base)];
+    }else{
+      syms = [];
+      for(const b of baseCandidates(it.base)){
+        if(mexcStockMap.has(b)) syms.push(mexcStockMap.get(b));
+        syms.push(b + "STOCK_USDT");
+        syms.push(b + "_USDT");
+      }
+      syms = Array.from(new Set(syms)).slice(0, 6);
     }
+    syms = syms.filter(s => !mexcSymbolToId.has(s));
+    return { id: it.id, syms };
+  });
 
-    if(it.type === "Index" && INDEX_MAP.has(it.base)){
-      for(const s of INDEX_MAP.get(it.base)) queue.push([s, it.id]);
-      continue;
+  // 라운드 인터리브: 모든 종목의 1순위 심볼 → 2순위 … 순으로 전송
+  // (종목마다 가장 유력한 심볼이 먼저 떠서 보드/표가 골고루 빨리 채워져요)
+  const queue = [];
+  const maxLen = perInstrument.reduce((m,p)=> Math.max(m, p.syms.length), 0);
+  for(let r=0; r<maxLen; r++){
+    for(const p of perInstrument){
+      if(r < p.syms.length) queue.push([p.syms[r], p.id]);
     }
-
-    const bases = baseCandidates(it.base);
-    const symbols = [];
-
-    for(const b of bases){
-      if(mexcStockMap.has(b)) symbols.push(mexcStockMap.get(b));
-      symbols.push(b + "STOCK_USDT");
-      symbols.push(b + "_USDT");
-    }
-
-    const uniq = Array.from(new Set(symbols)).slice(0, 6);
-    for(const s of uniq) queue.push([s, it.id]);
   }
 
   let i = 0;
