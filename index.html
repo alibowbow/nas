@@ -358,7 +358,7 @@ function typeTagClass(type){
 
 /* ===== 기본정렬 그룹 정의 ===== */
 const INDEX_ORDER = ["NAS100","SP500","US30","QQQ","NIKKEI225"];
-const CRYPTO_ORDER = ["BTC","ETH","SOL","XRP","BNB","DOGE","TRX","ALL"];
+const CRYPTO_ORDER = ["BTC","ETH","SOL","XRP","BNB","DOGE","TRX","ALL","ONDO","XLM","NEAR","WLD"];
 const CRYPTO_SET = new Set(CRYPTO_ORDER);
 const BIGTECH_ORDER = ["AAPL","MSFT","AMZN","NVDA","GOOGL","META","TSLA","ORCL","AMD","INTC"];
 const BIGTECH_SET = new Set(BIGTECH_ORDER);
@@ -398,7 +398,7 @@ const DEAD_DISPLAYS = new Set([
 const METAL_KR_LABELS = { XAU: "금", XAG: "은", XPT: "백금", XPD: "팔라듐", COPPER: "구리" };
 
 const BINANCE_SYMBOLS = {
-  crypto: ["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","BNBUSDT","DOGEUSDT","TRXUSDT","ALLUSDT"],
+  crypto: ["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","BNBUSDT","DOGEUSDT","TRXUSDT","ALLUSDT","ONDOUSDT","XLMUSDT","NEARUSDT","WLDUSDT"],
 };
 const BINANCE_SET = new Set([...BINANCE_SYMBOLS.crypto]);
 
@@ -486,6 +486,12 @@ const MEXC_METALS = [
   { base:"COPPER", display:"COPPERUSDT", mexcSymbols:["COPPER_USDT","XCU_USDT","HG_USDT"] },
 ];
 
+// ETF — 라이브 시세는 MEXC 무기한 선물(후보 심볼 매핑), 차트는 실제 ETF 심볼 사용
+const MEXC_ETFS = [
+  { base:"SOXL", display:"SOXLUSDT", label:"SOXL", subLabel:"반도체 Bull 3X",        tvSymbol:"AMEX:SOXL", mexcSymbols:["SOXL_USDT","SOXLUSDT"] },
+  { base:"DRAM", display:"DRAMUSDT", label:"DRAM", subLabel:"메모리 ETF · 삼성·SK·마이크론", tvSymbol:"CBOE:DRAM", mexcSymbols:["DRAM_USDT","DRAMUSDT"] },
+];
+
 // 인스트루먼트 생성(중복 없이 + dead 제거)
 const INSTRUMENTS = [];
 const usedDisplay = new Set();
@@ -523,6 +529,14 @@ for(const e of MEXC_ENERGY){
 for(const m of MEXC_METALS){
   addInstrument({ id:"M:"+m.display, ex:"MEXC", type:"Commodity", display:m.display, label:m.base, subLabel: METAL_KR_LABELS[m.base] || "", base:m.base, mexcSymbols:m.mexcSymbols });
 }
+for(const e of MEXC_ETFS){
+  addInstrument({ id:"M:"+e.display, ex:"MEXC", type:"Index", display:e.display, label:e.label, subLabel:e.subLabel, base:e.base, tvSymbol:e.tvSymbol, mexcSymbols:e.mexcSymbols });
+}
+// SpaceX(SPCX) — 2026.6 NASDAQ 상장. 라이브 시세는 MEXC 무기한 선물, 차트는 NASDAQ:SPCX
+addInstrument({
+  id:"M:SPCXUSDT", ex:"MEXC", type:"Stock", display:"SPCXUSDT", label:"SPCX", subLabel:"SpaceX",
+  base:"SPCX", tvSymbol:"NASDAQ:SPCX", mexcSymbols:["SPCX_USDT","SPCXUSDT","SPCXSTOCK_USDT"]
+});
 for(const fx of MEXC_FX){
   addInstrument({ id:"MFX:"+fx.base, ex:"MEXC", type:"FX", display:fx.base, label:fx.label, base:fx.base, mexcFx:fx.expr });
 }
@@ -559,7 +573,7 @@ addInstrument({
 // MEXC가 'EWY 한국 지수 선물'로 상장. 다른 개별 한국주는 아직 perp 미상장이라 바스켓으로 커버.
 addInstrument({
   id:"M:EWY", ex:"MEXC", type:"Index", display:"EWY", label:"EWY", base:"EWY",
-  krLabel:"MSCI 한국 ETF", sub:"EWYon · 한화에어로·두산 등 80+종목", tvSymbol:"AMEX:EWY",
+  krLabel:"MSCI 한국 ETF", sub:"EWYon · 한국 증시 바스켓", tvSymbol:"AMEX:EWY",
   logo:"KR", color:"#0A3D91", unit:"$", liveLabel:"Ondo EWYon · CoinGecko/MEXC",
   kospi:true, kospiQuote:true
 });
@@ -801,6 +815,7 @@ function updateAllKospiCards(){
 }
 
 /* ===== Filters + Sort ===== */
+const kospiBoard  = document.getElementById("kospiBoard");
 const filterAll   = document.getElementById("filterAll");
 const filterKospi = document.getElementById("filterKospi");
 const filterCrypto= document.getElementById("filterCrypto");
@@ -819,6 +834,9 @@ function setFilter(mode){
   filterFX.classList.toggle("on", mode==="FX");
   filterCommo.classList.toggle("on", mode==="Commodity");
   filterEnergy.classList.toggle("on", mode==="Energy");
+
+  // 코스피 보드는 '전체'·'코스피' 탭에서만 노출, 그 외 카테고리 탭에선 숨김
+  if(kospiBoard) kospiBoard.style.display = (mode==="ALL" || mode==="KOSPI") ? "" : "none";
 
   for(const {row} of rows.values()){
     const t = row.dataset.type;
@@ -1091,6 +1109,9 @@ function connectMexc(){
       mexcSubscribe(b, "__FX_BASE__");
     }
 
+    // 크립토 폴백(등락률용 일봉 시가 + 비상 가격) — 바이낸스 선물 차단 대비, MEXC로 보완
+    subscribeMexcCryptoFallback();
+
     // ① 워밍업을 기다리지 않고 즉시 종목 구독 시작(코스피 우선) → 첫 로딩 체감 단축
     subscribeMexcFinal();
 
@@ -1170,9 +1191,11 @@ function connectMexc(){
 
         const id = mexcSymbolToId.get(sym);
         if(id && id !== "__FX_BASE__" && isFinite(last)){
-          // dayOpen은 Day1 kline에서만 저장해서 일봉 기준으로 계산
-          // 일봉 시가 수신 전에는 resolvePct()가 NaN을 반환 => UI에 '-' 표시
-          applyUpdate(id, last, pct24h, vol, NaN, "MEXC");
+          // 크립토(B:*)는 Binance/Hyperliquid가 최신이면 MEXC 가격은 양보(폴백 전용) — 가격 깜빡임 방지
+          const cur = lastValue.get(id);
+          const cryptoYield = id.startsWith("B:") && cur && (cur.src==="BINANCE"||cur.src==="HYPER") && (Date.now()-cur.ts)<6000;
+          // dayOpen은 Day1 kline에서만 저장해서 일봉 기준으로 계산(시가 수신 전엔 '-')
+          if(!cryptoYield) applyUpdate(id, last, pct24h, vol, NaN, "MEXC");
         }
       }
     }catch(_){}
@@ -1211,6 +1234,17 @@ function mexcSubscribe(symbol, id){
   }
 }
 
+// 크립토 MEXC 폴백: 바이낸스 선물이 막히면 가격은 Hyperliquid(allMids)에서 오지만
+// 일봉 시가가 없어 등락률이 '-'로 남고, 코인이 Hyperliquid에 없으면 가격조차 안 뜸.
+// → MEXC에서 ticker(폴백 가격) + Day1 kline(일봉 시가)을 받아 보완.
+//   가격은 Binance/Hyperliquid 우선, MEXC는 둘 다 끊겼을 때만 적용(아래 ticker 핸들러 가드).
+function subscribeMexcCryptoFallback(){
+  if(!wsMexc || wsMexc.readyState !== WebSocket.OPEN) return;
+  for(const s of BINANCE_SYMBOLS.crypto){
+    mexcSubscribe(s.replace("USDT","") + "_USDT", "B:" + s); // BTCUSDT -> BTC_USDT, id=B:BTCUSDT
+  }
+}
+
 function baseCandidates(base){
   const cands = [];
   cands.push(base);
@@ -1242,8 +1276,9 @@ function subscribeMexcFinal(){
         if(mexcStockMap.has(b)) syms.push(mexcStockMap.get(b));
         syms.push(b + "STOCK_USDT");
         syms.push(b + "_USDT");
+        syms.push(b + "USDT");   // 무언더스코어 형식(예: TSLAUSDT) 대응
       }
-      syms = Array.from(new Set(syms)).slice(0, 6);
+      syms = Array.from(new Set(syms)).slice(0, 8);
     }
     syms = syms.filter(s => !mexcSymbolToId.has(s));
     return { id: it.id, syms };
@@ -1464,7 +1499,7 @@ connectMexc();
 startFrankfurterFx();
 startCoinGecko();
 updateAllKospiCards();
-applySort();
+setFilter("ALL"); // 처음 로드 = '전체' 탭: 코스피 보드 + 전체 목록 노출
 </script>
 </body>
 </html>
