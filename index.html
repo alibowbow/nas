@@ -102,6 +102,12 @@
     .sortWrap{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:12.5px}
     select{border:1px solid var(--line-2);background:var(--surface-2);color:var(--text);padding:9px 12px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;outline:none;cursor:pointer;}
     select:hover{border-color:var(--brand-line)}
+    .subfilters{display:none;flex-basis:100%;width:100%;gap:7px;flex-wrap:wrap;align-items:center;border-top:1px solid var(--line);margin-top:2px;padding-top:13px}
+    .subfilters.show{display:flex}
+    .subfilters .slabel{color:var(--dim);font-size:12px;font-weight:700;margin-right:2px}
+    .subchip{padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;user-select:none;transition:background .15s ease, color .15s ease, border-color .15s ease}
+    .subchip:hover{background:var(--surface-hover);color:var(--text)}
+    .subchip.on{color:var(--brand);border-color:var(--brand-line);background:var(--brand-soft)}
     .grid{margin-top:16px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--surface);box-shadow:var(--shadow);}
     .hdr, .row{display:grid;grid-template-columns: 1.65fr .95fr .75fr .85fr;gap:12px;padding:14px 16px;align-items:center;}
     .hdr{background:var(--surface-2);border-bottom:1px solid var(--line);color:var(--dim);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
@@ -222,6 +228,8 @@
         <div class="pill" id="filterCommo">원자재/금속</div>
         <div class="pill" id="filterEnergy">에너지</div>
       </div>
+
+      <div class="subfilters" id="stockSub"></div>
 
       <div class="sortWrap">
         <span class="muted">정렬</span>
@@ -578,6 +586,22 @@ addInstrument({
   kospi:true, kospiQuote:true
 });
 
+/* ===== 주식 하위 분류(섹터) — '주식' 탭에서 2차 필터로 노출 ===== */
+const STOCK_GROUPS = [
+  { key:"memory",    label:"메모리",      bases:["SAMSUNG","SKHYNIX","MU","SNDK","WDC","STX"] },
+  { key:"logic",     label:"CPU·GPU",    bases:["NVDA","AMD","INTC","ARM","QCOM","AVGO","MRVL"] },
+  { key:"semieq",    label:"반도체장비",   bases:["ASML","AMAT","LRCX","KLAC","SMCI"] },
+  { key:"bigtech",   label:"빅테크",      bases:["AAPL","MSFT","GOOGL","AMZN","META","NFLX"] },
+  { key:"software",  label:"SW·SaaS",    bases:["CRM","ADBE","ORCL","INTU","CRWD","PANW","PLTR","SHOP","SPOT","IBM","ACN","RDDT"] },
+  { key:"cryptorel", label:"크립토관련",   bases:["MSTR","COIN","CRCL","HOOD"] },
+  { key:"mobility",  label:"모빌리티",     bases:["TSLA","UBER","HYUNDAI"] },
+  { key:"finance",   label:"금융",        bases:["JPM","BAC","GS","MA","PYPL","FUTU"] },
+  { key:"consumer",  label:"소비·헬스",    bases:["WMT","MCD","NKE","PEP","LLY","JNJ","UNH"] },
+  { key:"etc",       label:"통신·기타",    bases:["CSCO","VZ","GE","BA","XOM","BABA","JD"] },
+];
+const STOCK_GROUP_OF = new Map();
+for(const g of STOCK_GROUPS) for(const b of g.bases) STOCK_GROUP_OF.set(b, g.key);
+
 /* ===== 2) UI rows ===== */
 const rows = new Map();
 const lastValue = new Map();
@@ -595,6 +619,7 @@ function buildRows(){
     row.dataset.sortVol = "-999999";
     row.dataset.sortName = it.display.toUpperCase();
     row.dataset.kospi = it.kospi ? "1" : "0";
+    row.dataset.stockGroup = (it.type === "Stock") ? (STOCK_GROUP_OF.get(it.base) || "") : "";
 
     let grp = 3;
     let grpOrder = 9999;
@@ -837,13 +862,17 @@ function setFilter(mode){
   // 코스피 보드는 '전체'·'코스피' 탭에서만 노출, 그 외 카테고리 탭에선 숨김
   if(kospiBoard) kospiBoard.style.display = (mode==="ALL" || mode==="KOSPI") ? "" : "none";
 
+  // 주식 하위 분류 칩: '주식' 탭에서만 노출, 다른 탭으로 가면 분류를 '전체'로 초기화
+  if(mode !== "Stock") setStockSub("ALL");
+  if(stockSub) stockSub.classList.toggle("show", mode === "Stock");
+
   for(const {row} of rows.values()){
     const t = row.dataset.type;
     const show =
       (mode==="ALL") ||
       (mode==="KOSPI" && row.dataset.kospi==="1") ||
       (mode==="Crypto" && t==="Crypto") ||
-      (mode==="Stock" && t==="Stock") ||
+      (mode==="Stock" && t==="Stock" && (stockSubFilter==="ALL" || row.dataset.stockGroup===stockSubFilter)) ||
       (mode==="Index" && t==="Index") ||
       (mode==="FX" && t==="FX") ||
       (mode==="Energy" && t==="Energy") ||
@@ -860,6 +889,27 @@ filterIndex.onclick  = () => setFilter("Index");
 filterFX.onclick     = () => setFilter("FX");
 filterCommo.onclick  = () => setFilter("Commodity");
 filterEnergy.onclick = () => setFilter("Energy");
+
+/* ===== 주식 하위 분류 칩 ===== */
+const stockSub = document.getElementById("stockSub");
+let stockSubFilter = "ALL";
+function setStockSub(key){
+  stockSubFilter = key;
+  for(const el of stockSub.querySelectorAll(".subchip")) el.classList.toggle("on", el.dataset.key === key);
+}
+(function buildStockSubFilters(){
+  const lab = document.createElement("span"); lab.className = "slabel"; lab.textContent = "분류";
+  stockSub.appendChild(lab);
+  const add = (key, text)=>{
+    const c = document.createElement("div");
+    c.className = "subchip" + (key === "ALL" ? " on" : "");
+    c.textContent = text; c.dataset.key = key;
+    c.onclick = ()=>{ setStockSub(key); setFilter("Stock"); };
+    stockSub.appendChild(c);
+  };
+  add("ALL", "전체");
+  for(const g of STOCK_GROUPS) add(g.key, g.label);
+})();
 
 sortSel.onchange = () => applySort();
 
