@@ -420,7 +420,20 @@ const MEXC_DISPLAY = [
   "MRVLUSDT","MSFTUSDT","MSTRUSDT","MUUSDT","NAS100USDT","NFLXUSDT","NVDAUSDT","NKEUSDT",
   "ORCLUSDT","PANWUSDT","PEPUSDT","PLTRUSDT","PYPLUSDT","QCOMUSDT","QQQUSDT","RDDTUSDT","HOODUSDT",
   "SHOPUSDT","SMCIUSDT","SNDKUSDT","SPOTUSDT","SP500USDT","TSLAUSDT","UBERUSDT","UNHUSDT","US30USDT",
-  "VZUSDT","WMTUSDT","XOMUSDT"
+  "VZUSDT","WMTUSDT","XOMUSDT",
+  // ── 추가 종목(2026) ──
+  "WDCUSDT","STXUSDT","TSMUSDT","ONUSDT","TXNUSDT","ADIUSDT","MCHPUSDT","KLACUSDT","TERUSDT",
+  "GLWUSDT","LITEUSDT","NOKUSDT","COHRUSDT","CIENUSDT","ANETUSDT","JNPRUSDT",
+  "SONYUSDT","DISUSDT","EAUSDT","RBLXUSDT",
+  "NOWUSDT","SNOWUSDT","DDOGUSDT","NETUSDT","ZSUSDT","ZMUSDT","UUSDT","MDBUSDT","TEAMUSDT","WDAYUSDT",
+  "MARAUSDT","RIOTUSDT","CLSKUSDT","XYZUSDT","GLXYUSDT",
+  "RIVNUSDT","LCIDUSDT","NIOUSDT","LIUSDT","XPEVUSDT","FUSDT","GMUSDT",
+  "BRKBUSDT","VUSDT","AXPUSDT","MSUSDT","CUSDT","WFCUSDT","SCHWUSDT",
+  "HDUSDT","COSTUSDT","SBUXUSDT","LOWUSDT","TGTUSDT","EBAYUSDT","GMEUSDT","DKNGUSDT","PDDUSDT","BIDUUSDT",
+  "NVOUSDT","PFEUSDT","MRKUSDT","ABBVUSDT","TMOUSDT",
+  "BEUSDT","TUSDT","CATUSDT","DEUSDT","UPSUSDT","HONUSDT",
+  // ETF(지수로 표시 — INDEX_MAP 참조)
+  "IWMUSDT","IBITUSDT","DIAUSDT"
 ].filter(x => !DEAD_DISPLAYS.has(x));
 
 const INDEX_MAP = new Map([
@@ -433,6 +446,10 @@ const INDEX_MAP = new Map([
   ["EWY",    ["EWY_USDT","EWYON_USDT","EWYSTOCK_USDT"]],
   // MSCI 일본 ETF(EWJ) — 바이낸스에서 MEXC로 이전
   ["EWJ",    ["EWJ_USDT","EWJSTOCK_USDT"]],
+  // 미국 ETF
+  ["IWM",    ["IWM_USDT","IWMSTOCK_USDT"]],   // 러셀2000
+  ["IBIT",   ["IBIT_USDT","IBITSTOCK_USDT"]], // 비트코인 현물 ETF
+  ["DIA",    ["DIA_USDT","DIASTOCK_USDT"]],   // 다우
 ]);
 
 const BASE_ALIASES = {
@@ -440,7 +457,8 @@ const BASE_ALIASES = {
   "NUU": ["NU"],
   "DYA": ["DY"],
   "CATL": ["CATL","300750"],
-  "NVDA": ["NVDA","NVIDIA"]
+  "NVDA": ["NVDA","NVIDIA"],
+  "TSLA": ["TSLA","TESLA"]
 };
 
 // MEXC FX derived
@@ -588,16 +606,19 @@ addInstrument({
 
 /* ===== 주식 하위 분류(섹터) — '주식' 탭에서 2차 필터로 노출 ===== */
 const STOCK_GROUPS = [
-  { key:"memory",    label:"메모리",      bases:["SAMSUNG","SKHYNIX","MU","SNDK","WDC","STX"] },
-  { key:"logic",     label:"CPU·GPU",    bases:["NVDA","AMD","INTC","ARM","QCOM","AVGO","MRVL"] },
-  { key:"semieq",    label:"반도체장비",   bases:["ASML","AMAT","LRCX","KLAC","SMCI"] },
-  { key:"bigtech",   label:"빅테크",      bases:["AAPL","MSFT","GOOGL","AMZN","META","NFLX"] },
-  { key:"software",  label:"SW·SaaS",    bases:["CRM","ADBE","ORCL","INTU","CRWD","PANW","PLTR","SHOP","SPOT","IBM","ACN","RDDT"] },
-  { key:"cryptorel", label:"크립토관련",   bases:["MSTR","COIN","CRCL","HOOD"] },
-  { key:"mobility",  label:"모빌리티",     bases:["TSLA","UBER","HYUNDAI"] },
-  { key:"finance",   label:"금융",        bases:["JPM","BAC","GS","MA","PYPL","FUTU"] },
-  { key:"consumer",  label:"소비·헬스",    bases:["WMT","MCD","NKE","PEP","LLY","JNJ","UNH"] },
-  { key:"etc",       label:"통신·기타",    bases:["CSCO","VZ","GE","BA","XOM","BABA","JD"] },
+  { key:"memory",     label:"메모리",        bases:["SAMSUNG","SKHYNIX","MU","SNDK","WDC","STX"] },
+  { key:"logic",      label:"CPU·GPU",      bases:["NVDA","AMD","INTC","ARM","QCOM","AVGO","MRVL","TSM","ON","TXN","ADI","MCHP"] },
+  { key:"semieq",     label:"반도체장비",     bases:["ASML","AMAT","LRCX","KLAC","TER","SMCI"] },
+  { key:"optical",    label:"광통신·네트워크", bases:["GLW","LITE","NOK","COHR","CIEN","ANET","JNPR","CSCO"] },
+  { key:"bigtech",    label:"빅테크",        bases:["AAPL","MSFT","GOOGL","AMZN","META","SONY"] },
+  { key:"software",   label:"SW·SaaS",      bases:["CRM","ADBE","ORCL","INTU","CRWD","PANW","PLTR","SHOP","SPOT","IBM","ACN","NOW","SNOW","DDOG","NET","ZS","ZM","U","MDB","TEAM","WDAY"] },
+  { key:"media",      label:"미디어·게임",    bases:["NFLX","DIS","RDDT","EA","RBLX","GME","DKNG"] },
+  { key:"cryptorel",  label:"크립토관련",     bases:["MSTR","COIN","CRCL","HOOD","MARA","RIOT","CLSK","XYZ","GLXY"] },
+  { key:"mobility",   label:"모빌리티·EV",    bases:["TSLA","HYUNDAI","UBER","RIVN","LCID","NIO","LI","XPEV","F","GM"] },
+  { key:"finance",    label:"금융",          bases:["JPM","BAC","GS","MA","PYPL","FUTU","BRKB","V","AXP","MS","C","WFC","SCHW"] },
+  { key:"consumer",   label:"소비·리테일",    bases:["WMT","MCD","NKE","PEP","HD","COST","SBUX","LOW","TGT","EBAY","BABA","JD","PDD","BIDU"] },
+  { key:"health",     label:"헬스케어",       bases:["LLY","JNJ","UNH","NVO","PFE","MRK","ABBV","TMO"] },
+  { key:"industrial", label:"산업·기타",      bases:["GE","BA","XOM","VZ","T","CAT","DE","UPS","HON","BE"] },
 ];
 const STOCK_GROUP_OF = new Map();
 for(const g of STOCK_GROUPS) for(const b of g.bases) STOCK_GROUP_OF.set(b, g.key);
@@ -848,8 +869,10 @@ const filterIndex = document.getElementById("filterIndex");
 const filterFX    = document.getElementById("filterFX");
 const filterCommo = document.getElementById("filterCommo");
 const filterEnergy= document.getElementById("filterEnergy");
+let currentFilterMode = "ALL";
 
 function setFilter(mode){
+  currentFilterMode = mode;
   filterAll.classList.toggle("on", mode==="ALL");
   filterKospi.classList.toggle("on", mode==="KOSPI");
   filterCrypto.classList.toggle("on", mode==="Crypto");
@@ -868,7 +891,7 @@ function setFilter(mode){
 
   for(const {row} of rows.values()){
     const t = row.dataset.type;
-    const show =
+    const matches =
       (mode==="ALL") ||
       (mode==="KOSPI" && row.dataset.kospi==="1") ||
       (mode==="Crypto" && t==="Crypto") ||
@@ -877,9 +900,24 @@ function setFilter(mode){
       (mode==="FX" && t==="FX") ||
       (mode==="Energy" && t==="Energy") ||
       (mode==="Commodity" && t==="Commodity");
-    row.style.display = show ? "" : "none";
+    // 시세를 못 받은 MEXC 행(dead)은 숨김
+    row.style.display = (matches && row.dataset.dead !== "1") ? "" : "none";
   }
   applySort();
+}
+
+/* ===== 시세 미수신 MEXC 행 자동 숨김('-' 클러터 제거) ===== */
+let deadPruneTimer = null;
+function pruneDeadMexc(){
+  for(const { row, def } of rows.values()){
+    if(def.ex !== "MEXC") continue;
+    if(def.type !== "Stock" && def.type !== "Index" && def.type !== "Commodity") continue;
+    row.dataset.dead = lastValue.has(def.id) ? "0" : "1";
+  }
+  setFilter(currentFilterMode);
+}
+function resetDeadFlags(){
+  for(const { row } of rows.values()) if(row.dataset.dead === "1") row.dataset.dead = "0";
 }
 filterAll.onclick    = () => setFilter("ALL");
 filterKospi.onclick  = () => setFilter("KOSPI");
@@ -1121,6 +1159,8 @@ let frankfurterTimer=null;
 const mexcSymbolToId = new Map(); // subscribedSymbol -> instrumentId (ticker)
 const fxState = new Map();
 const mexcStockMap = new Map();   // base -> STOCK_USDT
+const mexcContracts = new Set();   // 워밍업에서 발견한 모든 *_USDT 계약 심볼
+const mexcTickerToSym = new Map(); // 표시 티커 -> 실제 계약심볼(예: TSLA -> TESLA_USDT)
 
 // ✅ Day1 kline 매핑
 const mexcKlineToIds = new Map();     // symbol -> Set(instrumentId)
@@ -1136,6 +1176,8 @@ function connectMexc(){
   mexcSymbolToId.clear();
   fxState.clear();
   mexcStockMap.clear();
+  mexcContracts.clear();
+  mexcTickerToSym.clear();
   mexcKlineToIds.clear();
   mexcKlineSubscribed.clear();
 
@@ -1170,6 +1212,13 @@ function connectMexc(){
       try{ wsMexc.send(JSON.stringify({ method:"unsub.contract" })); }catch(_){}
       subscribeMexcFinal();
     }, CONTRACT_WARMUP_MS);
+
+    // (재)연결 시 이전 dead 플래그 초기화 후 현재 필터 재적용 → 숨겼던 행 다시 표시
+    resetDeadFlags();
+    setFilter(currentFilterMode);
+    // 충분히 기다린 뒤(16초) 시세를 못 받은 MEXC 행은 숨김('-' 클러터 제거)
+    if(deadPruneTimer) clearTimeout(deadPruneTimer);
+    deadPruneTimer = setTimeout(pruneDeadMexc, 16000);
   };
 
   wsMexc.onmessage = (ev)=>{
@@ -1177,12 +1226,18 @@ function connectMexc(){
       const msg = JSON.parse(ev.data);
       if(!msg) return;
 
-      // 계약 스트림에서 STOCK 계약 수집
+      // 계약 스트림에서 전체 계약 심볼 + 표시명(티커) 매핑 수집
       if(msg.channel === "push.contract" && msg.data && msg.data.symbol){
         const sym = msg.data.symbol;
-        if(typeof sym === "string" && sym.endsWith("STOCK_USDT")){
-          const base = sym.replace("STOCK_USDT","");
-          mexcStockMap.set(base, sym);
+        if(typeof sym === "string" && sym.endsWith("_USDT")){
+          mexcContracts.add(sym);
+          if(sym.endsWith("STOCK_USDT")) mexcStockMap.set(sym.replace("STOCK_USDT",""), sym);
+          // 표시명에서 티커 추출 → 실제 계약심볼 매핑 (예: 표시 'TSLAUSDT' → 계약 'TESLA_USDT')
+          const dn = msg.data.displayNameEn || msg.data.displayName || "";
+          if(typeof dn === "string" && dn){
+            const tk = dn.toUpperCase().replace(/[^A-Z0-9]/g,"").replace(/USDT.*$/,"").replace(/PERP$/,"");
+            if(tk && tk.length>=1 && tk.length<=10 && !mexcTickerToSym.has(tk)) mexcTickerToSym.set(tk, sym);
+          }
         }
         return;
       }
@@ -1239,6 +1294,7 @@ function connectMexc(){
 
         const id = mexcSymbolToId.get(sym);
         if(id && id !== "__FX_BASE__" && isFinite(last)){
+          ensureMexcKline(sym); // 유효 심볼 확인됨 → 이제 일봉 kline 구독
           // 크립토(B:*)는 Binance/Hyperliquid가 최신이면 MEXC 가격은 양보(폴백 전용) — 가격 깜빡임 방지
           const cur = lastValue.get(id);
           const cryptoYield = id.startsWith("B:") && cur && (cur.src==="BINANCE"||cur.src==="HYPER") && (Date.now()-cur.ts)<6000;
@@ -1270,16 +1326,17 @@ function mexcSubscribe(symbol, id){
     wsMexc.send(JSON.stringify({ method:"sub.ticker", param:{symbol}, gzip:false }));
   }
 
-  // ✅ Day1 kline도 구독(일봉 시가 얻기)
+  // ✅ Day1 kline은 ticker가 실제 도착한(유효한) 심볼에만 구독 → 초기 메시지 폭주/구독상한 방지
   if(id !== "__FX_BASE__"){
     if(!mexcKlineToIds.has(symbol)) mexcKlineToIds.set(symbol, new Set());
     mexcKlineToIds.get(symbol).add(id);
-
-    if(!mexcKlineSubscribed.has(symbol)){
-      mexcKlineSubscribed.add(symbol);
-      wsMexc.send(JSON.stringify({ method:"sub.kline", param:{symbol, interval:"Day1"}, gzip:false }));
-    }
   }
+}
+function ensureMexcKline(symbol){
+  if(!wsMexc || wsMexc.readyState !== WebSocket.OPEN) return;
+  if(mexcKlineSubscribed.has(symbol) || !mexcKlineToIds.has(symbol)) return;
+  mexcKlineSubscribed.add(symbol);
+  wsMexc.send(JSON.stringify({ method:"sub.kline", param:{symbol, interval:"Day1"}, gzip:false }));
 }
 
 // 크립토 MEXC 폴백: 바이낸스 선물이 막히면 가격은 Hyperliquid(allMids)에서 오지만
@@ -1318,15 +1375,19 @@ function subscribeMexcFinal(){
       syms = [...it.mexcSymbols];
     }else if(it.type === "Index" && INDEX_MAP.has(it.base)){
       syms = [...INDEX_MAP.get(it.base)];
+      if(mexcTickerToSym.has(it.base)) syms.unshift(mexcTickerToSym.get(it.base));
     }else{
       syms = [];
       for(const b of baseCandidates(it.base)){
+        if(mexcTickerToSym.has(b)) syms.push(mexcTickerToSym.get(b)); // 발견된 실제 계약(예: TSLA→TESLA_USDT)
         if(mexcStockMap.has(b)) syms.push(mexcStockMap.get(b));
         syms.push(b + "STOCK_USDT");
         syms.push(b + "_USDT");
         syms.push(b + "USDT");   // 무언더스코어 형식(예: TSLAUSDT) 대응
       }
-      syms = Array.from(new Set(syms)).slice(0, 8);
+      // 발견된 계약 집합에 실제 존재하는 후보를 앞쪽으로
+      if(mexcContracts.size) syms.sort((a,b)=> (mexcContracts.has(b)?1:0) - (mexcContracts.has(a)?1:0));
+      syms = Array.from(new Set(syms)).slice(0, 10);
     }
     syms = syms.filter(s => !mexcSymbolToId.has(s));
     return { id: it.id, syms };
