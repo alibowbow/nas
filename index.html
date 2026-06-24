@@ -422,7 +422,7 @@ const MEXC_DISPLAY = [
   "SHOPUSDT","SMCIUSDT","SNDKUSDT","SPOTUSDT","SP500USDT","TSLAUSDT","UBERUSDT","UNHUSDT","US30USDT",
   "VZUSDT","WMTUSDT","XOMUSDT",
   // ── 추가 종목(2026) ──
-  "WDCUSDT","STXUSDT","TSMUSDT","ONUSDT","TXNUSDT","ADIUSDT","MCHPUSDT","KLACUSDT","TERUSDT",
+  "WDCUSDT","STXUSDT","TSMUSDT","ONUSDT","TXNUSDT","ADIUSDT","MCHPUSDT","KLACUSDT","TERUSDT","ALABUSDT",
   "GLWUSDT","LITEUSDT","NOKUSDT","COHRUSDT","CIENUSDT","ANETUSDT","JNPRUSDT",
   "SONYUSDT","DISUSDT","EAUSDT","RBLXUSDT",
   "NOWUSDT","SNOWUSDT","DDOGUSDT","NETUSDT","ZSUSDT","ZMUSDT","UUSDT","MDBUSDT","TEAMUSDT","WDAYUSDT",
@@ -607,14 +607,14 @@ addInstrument({
 /* ===== 주식 하위 분류(섹터) — '주식' 탭에서 2차 필터로 노출 ===== */
 const STOCK_GROUPS = [
   { key:"memory",     label:"메모리",        bases:["SAMSUNG","SKHYNIX","MU","SNDK","WDC","STX"] },
-  { key:"logic",      label:"CPU·GPU",      bases:["NVDA","AMD","INTC","ARM","QCOM","AVGO","MRVL","TSM","ON","TXN","ADI","MCHP"] },
+  { key:"logic",      label:"CPU·GPU",      bases:["AMD","INTC","ARM","QCOM","AVGO","MRVL","TSM","ON","TXN","ADI","MCHP","ALAB"] },
   { key:"semieq",     label:"반도체장비",     bases:["ASML","AMAT","LRCX","KLAC","TER","SMCI"] },
   { key:"optical",    label:"광통신·네트워크", bases:["GLW","LITE","NOK","COHR","CIEN","ANET","JNPR","CSCO"] },
-  { key:"bigtech",    label:"빅테크",        bases:["AAPL","MSFT","GOOGL","AMZN","META","SONY"] },
+  { key:"bigtech",    label:"빅테크",        bases:["AAPL","MSFT","GOOGL","AMZN","META","NVDA","TSLA"] },
   { key:"software",   label:"SW·SaaS",      bases:["CRM","ADBE","ORCL","INTU","CRWD","PANW","PLTR","SHOP","SPOT","IBM","ACN","NOW","SNOW","DDOG","NET","ZS","ZM","U","MDB","TEAM","WDAY"] },
-  { key:"media",      label:"미디어·게임",    bases:["NFLX","DIS","RDDT","EA","RBLX","GME","DKNG"] },
+  { key:"media",      label:"미디어·게임",    bases:["NFLX","DIS","RDDT","EA","RBLX","GME","DKNG","SONY"] },
   { key:"cryptorel",  label:"크립토관련",     bases:["MSTR","COIN","CRCL","HOOD","MARA","RIOT","CLSK","XYZ","GLXY"] },
-  { key:"mobility",   label:"모빌리티·EV",    bases:["TSLA","HYUNDAI","UBER","RIVN","LCID","NIO","LI","XPEV","F","GM"] },
+  { key:"mobility",   label:"모빌리티·EV",    bases:["HYUNDAI","UBER","RIVN","LCID","NIO","LI","XPEV","F","GM"] },
   { key:"finance",    label:"금융",          bases:["JPM","BAC","GS","MA","PYPL","FUTU","BRKB","V","AXP","MS","C","WFC","SCHW"] },
   { key:"consumer",   label:"소비·리테일",    bases:["WMT","MCD","NKE","PEP","HD","COST","SBUX","LOW","TGT","EBAY","BABA","JD","PDD","BIDU"] },
   { key:"health",     label:"헬스케어",       bases:["LLY","JNJ","UNH","NVO","PFE","MRK","ABBV","TMO"] },
