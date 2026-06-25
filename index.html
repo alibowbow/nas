@@ -69,12 +69,15 @@
     }
     .wrap{max-width:1200px;margin:0 auto;padding:20px 16px 56px}
     .top{
+      position:relative;
       display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;
       padding:16px 18px;border:1px solid var(--line);border-radius:var(--radius);
       background:var(--glass); box-shadow:var(--shadow);
       backdrop-filter:blur(16px) saturate(1.3); -webkit-backdrop-filter:blur(16px) saturate(1.3);
     }
     .title{display:flex;flex-direction:column;gap:5px}
+    #listView .title{padding-right:52px}
+    #themeBtn{position:absolute;top:14px;right:16px;z-index:3}
     .title h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.01em}
     .title .sub{color:var(--muted);font-size:12.5px;line-height:1.4}
     .status{display:flex;gap:11px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:12.5px;}
@@ -209,6 +212,7 @@
   <!-- LIST VIEW -->
   <div id="listView">
     <div class="top">
+      <button class="btn icon" id="themeBtn" title="다크/라이트 전환" aria-label="테마 전환">🌙</button>
       <div class="title">
         <h1>메모리 보드 · TradFi/Crypto Live</h1>
         <div class="sub">
@@ -227,7 +231,6 @@
         <span class="fxBadge" title="원/달러 환율"><span class="fxLabel">USD/KRW</span><span id="usdKrwTop">-</span></span>
         <span class="muted">|</span>
         <button class="btn" id="reconnectBtn">재연결</button>
-        <button class="btn icon" id="themeBtn" title="다크/라이트 전환" aria-label="테마 전환">🌙</button>
       </div>
 
       <div class="filters">
@@ -1720,7 +1723,7 @@ async function openTradingView(it){
     tvWidget = new TradingView.widget({
       autosize: true,
       symbol: symbol,
-      interval: "1",
+      interval: "D",
       timezone: "Asia/Seoul",
       theme: currentTheme() === "light" ? "light" : "dark",
       style: "1",
