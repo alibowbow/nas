@@ -121,6 +121,11 @@
     .grid{margin-top:16px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--surface);box-shadow:var(--shadow);}
     .hdr, .row{display:grid;grid-template-columns: 1.65fr .95fr .75fr .85fr;gap:12px;padding:14px 16px;align-items:center;}
     .hdr{background:var(--surface-2);border-bottom:1px solid var(--line);color:var(--dim);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
+    .hdr .hcell.sortable{display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none;transition:color .12s ease}
+    .hdr .hcell.sortable:hover{color:var(--text)}
+    .hdr .hcell.activeSort{color:var(--brand)}
+    .sortArrow{font-size:9px;line-height:1;opacity:.32}
+    .hcell.activeSort .sortArrow{opacity:1}
     .row{border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s ease}
     .row:hover{background:var(--surface-hover)}
     .row:last-child{border-bottom:none}
@@ -248,7 +253,10 @@
           <option value="chgAsc">등락률↑</option>
           <option value="volDesc">거래대금↓</option>
           <option value="volAsc">거래대금↑</option>
-          <option value="name">이름</option>
+          <option value="priceDesc">가격↓</option>
+          <option value="priceAsc">가격↑</option>
+          <option value="name">이름 A→Z</option>
+          <option value="nameDesc">이름 Z→A</option>
         </select>
       </div>
     </div>
@@ -271,10 +279,10 @@
 
     <div class="grid" id="grid">
       <div class="hdr" id="hdr">
-        <div>종목</div>
-        <div class="muted">Last Price</div>
-        <div class="muted" style="justify-self:end;">Vol(24h)</div>
-        <div class="muted" style="justify-self:end;">Change(일봉)</div>
+        <div class="hcell sortable" data-sortkey="name">종목 <span class="sortArrow" aria-hidden="true"></span></div>
+        <div class="hcell sortable muted" data-sortkey="price">Last Price <span class="sortArrow" aria-hidden="true"></span></div>
+        <div class="hcell sortable muted" data-sortkey="vol" style="justify-self:end;">Vol(24h) <span class="sortArrow" aria-hidden="true"></span></div>
+        <div class="hcell sortable muted" data-sortkey="chg" style="justify-self:end;">Change(일봉) <span class="sortArrow" aria-hidden="true"></span></div>
       </div>
     </div>
 
@@ -312,6 +320,7 @@ const grid = document.getElementById("grid");
 const dotBinance = document.getElementById("dotBinance");
 const dotMexc = document.getElementById("dotMexc");
 const sortSel = document.getElementById("sortSel");
+let sortMode = "default";
 const listView = document.getElementById("listView");
 const tvView = document.getElementById("tvView");
 const tvTitle = document.getElementById("tvTitle");
@@ -725,6 +734,7 @@ function buildRows(){
     row.dataset.order = String(it._order);
     row.dataset.sortChg = "-999999";
     row.dataset.sortVol = "-999999";
+    row.dataset.sortPrice = "-999999";
     row.dataset.sortName = it.display.toUpperCase();
     row.dataset.kospi = it.kospi ? "1" : "0";
     row.dataset.kor = it.korStock ? "1" : "0";
@@ -1060,10 +1070,10 @@ function setStockSub(key){
   for(const g of STOCK_GROUPS) add(g.key, g.label);
 })();
 
-sortSel.onchange = () => applySort();
+sortSel.onchange = () => setSortMode(sortSel.value);
 
 function applySort(){
-  const mode = sortSel.value;
+  const mode = sortMode;
   const rowEls = [];
   for(const {row} of rows.values()) rowEls.push(row);
 
@@ -1081,15 +1091,50 @@ function applySort(){
       return (a.dataset.sortName||"").localeCompare(b.dataset.sortName||"");
     }
     if(mode === "name") return (a.dataset.sortName||"").localeCompare(b.dataset.sortName||"");
+    if(mode === "nameDesc") return (b.dataset.sortName||"").localeCompare(a.dataset.sortName||"");
     if(mode === "chgDesc") return keyNum(b.dataset.sortChg) - keyNum(a.dataset.sortChg);
     if(mode === "chgAsc") return keyNum(a.dataset.sortChg) - keyNum(b.dataset.sortChg);
     if(mode === "volDesc") return keyNum(b.dataset.sortVol) - keyNum(a.dataset.sortVol);
     if(mode === "volAsc") return keyNum(a.dataset.sortVol) - keyNum(b.dataset.sortVol);
+    if(mode === "priceDesc") return keyNum(b.dataset.sortPrice) - keyNum(a.dataset.sortPrice);
+    if(mode === "priceAsc") return keyNum(a.dataset.sortPrice) - keyNum(b.dataset.sortPrice);
     return 0;
   });
 
   for(const r of rowEls) grid.appendChild(r);
 }
+
+/* ===== 헤더 클릭 정렬 (클릭 시 방향 토글, ▲/▼ 표시) ===== */
+const SORT_KEY_MODES = { name:["name","nameDesc"], price:["priceAsc","priceDesc"], vol:["volAsc","volDesc"], chg:["chgAsc","chgDesc"] };
+function setSortMode(mode){
+  sortMode = mode;
+  if(sortSel.value !== mode) sortSel.value = mode; // 드롭다운과 동기화
+  applySort();
+  updateSortIndicators();
+}
+function headerSort(key){
+  const cur = sortMode;
+  let next;
+  if(key === "name")       next = (cur === "name")      ? "nameDesc" : "name";
+  else if(key === "price") next = (cur === "priceDesc") ? "priceAsc" : "priceDesc";
+  else if(key === "vol")   next = (cur === "volDesc")   ? "volAsc"   : "volDesc";
+  else if(key === "chg")   next = (cur === "chgDesc")   ? "chgAsc"   : "chgDesc";
+  else return;
+  setSortMode(next);
+}
+function updateSortIndicators(){
+  document.querySelectorAll("#hdr .hcell.sortable").forEach(cell => {
+    const modes = SORT_KEY_MODES[cell.dataset.sortkey];
+    const arrow = cell.querySelector(".sortArrow");
+    const active = !!(modes && modes.includes(sortMode));
+    cell.classList.toggle("activeSort", active);
+    if(arrow) arrow.textContent = active ? (sortMode === modes[0] ? "▲" : "▼") : "↕";
+  });
+}
+document.querySelectorAll("#hdr .hcell.sortable").forEach(cell => {
+  cell.addEventListener("click", () => headerSort(cell.dataset.sortkey));
+});
+updateSortIndicators();
 
 /* ===== Render ===== */
 function scheduleRender(){
@@ -1112,6 +1157,7 @@ function scheduleRender(){
 
       r.row.dataset.sortChg = String(isFinite(v.pct) ? v.pct : -999999);
       r.row.dataset.sortVol = String(isFinite(v.vol) ? v.vol : -999999);
+      r.row.dataset.sortPrice = String(isFinite(v.last) ? v.last : -999999);
     }
     pendingRender.clear();
     updateAllKospiCards();
