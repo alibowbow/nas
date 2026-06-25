@@ -198,7 +198,7 @@
       <div class="title">
         <h1>코스피 보드 · TradFi/Crypto Live</h1>
         <div class="sub">
-          삼성전자·SK하이닉스·현대차 해외 추정가(MEXC 선물·USD/KRW 환산) + 크립토/지수/원자재 실시간 ·
+          삼성전자·SK하이닉스·마이크론·현대차 해외 추정가(MEXC 선물·USD/KRW 환산) + 크립토/지수/원자재 실시간 ·
           행 클릭하면 TradingView 차트로 전환(뒤로 가능)
         </div>
       </div>
@@ -253,7 +253,7 @@
       </div>
       <div class="kGrid" id="kGrid"></div>
       <div class="note" style="margin-top:8px">
-        삼성전자·SK하이닉스·현대차는 MEXC USDT 무기한 선물(<span class="muted">…STOCK_USDT</span>)의 해외 가격을 USD/KRW로 환산한 <b>추정가</b>예요.
+        삼성전자·SK하이닉스·현대차는 MEXC USDT 무기한 선물(<span class="muted">…STOCK_USDT</span>)의 해외 가격을, 마이크론(메모리 3사)은 미국 상장가를 USD/KRW로 환산한 <b>추정가</b>예요. 시총도 원화로 표기해요.
         한국 <b>단일종목</b> 선물은 현재 이 3개뿐이라, 카카오·네이버·LG엔솔 등 나머지는 <b>KORU</b>(Direxion 한국 3X ETF)로 한국 증시를 3배 레버리지로 한 번에 담았어요.
         공식 시세가 아니며 실제가와 차이가 있을 수 있어요(비공식 정보 · 투자권유 아님). 등락은 일봉 시가 기준이에요.
       </div>
@@ -417,7 +417,7 @@ const MEXC_DISPLAY = [
   "EWJUSDT",
   "FUTUUSDT","GEUSDT","GOOGLUSDT","GSUSDT","IBMUSDT","INTCUSDT","INTUUSDT",
   "JDUSDT","JNJUSDT","JPMUSDT","LLYUSDT","LRCXUSDT","MAUSDT","MCDUSDT","METAUSDT",
-  "MRVLUSDT","MSFTUSDT","MSTRUSDT","MUUSDT","NAS100USDT","NFLXUSDT","NVDAUSDT","NKEUSDT",
+  "MRVLUSDT","MSFTUSDT","MSTRUSDT","NAS100USDT","NFLXUSDT","NVDAUSDT","NKEUSDT",
   "ORCLUSDT","PANWUSDT","PEPUSDT","PLTRUSDT","PYPLUSDT","QCOMUSDT","QQQUSDT","RDDTUSDT","HOODUSDT",
   "SHOPUSDT","SMCIUSDT","SNDKUSDT","SPOTUSDT","SP500USDT","TSLAUSDT","UBERUSDT","UNHUSDT","US30USDT",
   "VZUSDT","WMTUSDT","XOMUSDT",
@@ -580,6 +580,7 @@ for(const fx of FRANKFURTER_FX){
 const KOSPI_DEFS = [
   { base:"SAMSUNG", krLabel:"삼성전자",   sub:"005930 · Samsung Elec.", logo:"삼성", color:"#1428A0", tvSymbol:"MEXC:SAMSUNGUSDT.P", krwScale:1, shares:5846278608 },
   { base:"SKHYNIX", krLabel:"SK하이닉스", sub:"000660 · SK hynix",       logo:"SK",  color:"#E60012", tvSymbol:"MEXC:SKHYNIXUSDT.P", krwScale:1, shares:712702365 },
+  { base:"MU",      krLabel:"마이크론",    sub:"MU · Micron (메모리)",    logo:"MU",  color:"#0072CE", tvSymbol:"NASDAQ:MU",          krwScale:1, shares:1117000000 },
   { base:"HYUNDAI", krLabel:"현대차",     sub:"005380 · Hyundai Motor",  logo:"현대", color:"#002C5F", tvSymbol:"MEXC:HYUNDAIUSDT.P", krwScale:1, shares:209416191 },
 ];
 for(const k of KOSPI_DEFS){
