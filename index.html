@@ -1203,7 +1203,7 @@ function queueBinanceReconnect(){
    바이낸스 선물은 한국에서 접속이 막혀(geo-block) 크립토가 비어 보일 수 있어요.
    Hyperliquid allMids 로 빈 자리를 채우고, 바이낸스가 4초 내 갱신 중이면 양보해요. */
 const dotHyper = document.getElementById("dotHyper");
-let wsHyper=null, hyperTimer=null, hyperBackoff=800;
+let wsHyper=null, hyperTimer=null, hyperBackoff=800, hyperPing=null;
 const HYPER_TO_ID = new Map(); // Hyperliquid 코인명 -> 인스트루먼트 id
 for(const s of BINANCE_SYMBOLS.crypto){
   HYPER_TO_ID.set(s.replace("USDT",""), "B:"+s);
@@ -1211,6 +1211,7 @@ for(const s of BINANCE_SYMBOLS.crypto){
 function connectHyperliquid(){
   if(wsHyper && (wsHyper.readyState===WebSocket.OPEN || wsHyper.readyState===WebSocket.CONNECTING)) return;
   if(hyperTimer){ clearTimeout(hyperTimer); hyperTimer=null; }
+  if(hyperPing){ clearInterval(hyperPing); hyperPing=null; }
   setDot(dotHyper,"DEAD");
   try{ wsHyper = new WebSocket("wss://api.hyperliquid.xyz/ws"); }
   catch(e){ queueHyperReconnect(); return; }
@@ -1219,6 +1220,9 @@ function connectHyperliquid(){
     hyperBackoff=800;
     setDot(dotHyper,"LIVE");
     try{ wsHyper.send(JSON.stringify({ method:"subscribe", subscription:{ type:"allMids" } })); }catch(_){}
+    // Hyperliquid는 클라이언트가 일정시간 침묵하면 연결을 끊어요 → 30초마다 ping으로 유지
+    if(hyperPing) clearInterval(hyperPing);
+    hyperPing = setInterval(()=>{ try{ wsHyper.send(JSON.stringify({ method:"ping" })); }catch(_){ } }, 30000);
   };
   wsHyper.onmessage = (ev)=>{
     try{
@@ -1236,7 +1240,7 @@ function connectHyperliquid(){
     }catch(_){}
   };
   wsHyper.onerror = ()=>setDot(dotHyper,"DEAD");
-  wsHyper.onclose = ()=>{ setDot(dotHyper,"DEAD"); queueHyperReconnect(); };
+  wsHyper.onclose = ()=>{ setDot(dotHyper,"DEAD"); if(hyperPing){clearInterval(hyperPing); hyperPing=null;} queueHyperReconnect(); };
 }
 function queueHyperReconnect(){
   if(hyperTimer) return;
@@ -1248,7 +1252,7 @@ function queueHyperReconnect(){
 }
 
 /* ===== MEXC WS ===== */
-let wsMexc=null, mexcTimer=null, mexcBackoff=800, mexcPing=null;
+let wsMexc=null, mexcTimer=null, mexcBackoff=800, mexcPing=null, mexcSubTimer=null;
 let frankfurterTimer=null;
 const mexcSymbolToId = new Map(); // subscribedSymbol -> instrumentId (ticker)
 const fxState = new Map();
@@ -1267,6 +1271,7 @@ function connectMexc(){
   if(wsMexc && (wsMexc.readyState===WebSocket.OPEN || wsMexc.readyState===WebSocket.CONNECTING)) return;
   if(mexcTimer){ clearTimeout(mexcTimer); mexcTimer=null; }
   if(mexcPing){ clearInterval(mexcPing); mexcPing=null; }
+  if(mexcSubTimer){ clearInterval(mexcSubTimer); mexcSubTimer=null; }
 
   mexcSymbolToId.clear();
   fxState.clear();
@@ -1314,7 +1319,7 @@ function connectMexc(){
     setFilter(currentFilterMode);
     // 충분히 기다린 뒤(16초) 시세를 못 받은 MEXC 행은 숨김('-' 클러터 제거)
     if(deadPruneTimer) clearTimeout(deadPruneTimer);
-    deadPruneTimer = setTimeout(pruneDeadMexc, 16000);
+    deadPruneTimer = setTimeout(pruneDeadMexc, 20000); // 구독 송신을 30ms로 늦춘 만큼 prune도 여유
   };
 
   wsMexc.onmessage = (ev)=>{
@@ -1510,13 +1515,16 @@ function subscribeMexcFinal(){
     }
   }
 
+  // 송신 타이머는 항상 1개만 — 워밍업 보충 패스가 겹쳐도 레이트가 2배로 튀지 않게.
+  // 18ms(초당 ~55건)는 MEXC 메시지 레이트 한도를 넘겨 끊김을 유발 → 30ms(초당 ~33건)로 완화.
+  if(mexcSubTimer){ clearInterval(mexcSubTimer); mexcSubTimer=null; }
   let i = 0;
-  const timer = setInterval(()=> {
-    if(!wsMexc || wsMexc.readyState !== WebSocket.OPEN){ clearInterval(timer); return; }
-    if(i >= queue.length){ clearInterval(timer); return; }
+  mexcSubTimer = setInterval(()=> {
+    if(!wsMexc || wsMexc.readyState !== WebSocket.OPEN){ clearInterval(mexcSubTimer); mexcSubTimer=null; return; }
+    if(i >= queue.length){ clearInterval(mexcSubTimer); mexcSubTimer=null; return; }
     const [sym, id] = queue[i++];
     mexcSubscribe(sym, id);
-  }, 18);
+  }, 30);
 }
 
 /* ===== FX derived ===== */
@@ -1744,6 +1752,8 @@ function closeAll(){
   try{ wsHyper && wsHyper.close(); }catch(_){}
   wsBinance = wsMexc = wsHyper = null;
   if(mexcPing){ clearInterval(mexcPing); mexcPing=null; }
+  if(mexcSubTimer){ clearInterval(mexcSubTimer); mexcSubTimer=null; }
+  if(hyperPing){ clearInterval(hyperPing); hyperPing=null; }
   if(frankfurterTimer){ clearInterval(frankfurterTimer); frankfurterTimer=null; }
   if(hyperTimer){ clearTimeout(hyperTimer); hyperTimer=null; }
   if(coingeckoTimer){ clearInterval(coingeckoTimer); coingeckoTimer=null; }
