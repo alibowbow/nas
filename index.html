@@ -260,7 +260,8 @@
       <div class="note" style="margin-top:8px">
         <b>메모리</b>(삼성전자·SK하이닉스·마이크론)와 <b>스토리지</b>(샌디스크·WD·씨게이트) 6사를 한 화면에서 비교해요.
         삼성·SK하이닉스는 MEXC 무기한 선물, 나머지는 미국 상장가를 USD/KRW로 환산한 <b>추정가</b>이고 시총도 원화로 표기해요.
-        공식 시세가 아니며 실제가와 차이가 있을 수 있어요(비공식 정보 · 투자권유 아님). 등락은 일봉 시가 기준이에요.
+        공식 시세가 아니며 실제가와 차이가 있을 수 있어요(비공식 정보 · 투자권유 아님).
+        등락률은 24시간 거래되는 토큰화 선물 기준이라 국장 본장(09:00~15:30) 등락률과 차이가 있을 수 있어요 — 한국 종목은 전일 15:30 마감가에 맞추려 시도하되, 데이터 제약 시 일봉(09:00) 시가 기준으로 표시돼요.
       </div>
     </section>
 
@@ -633,6 +634,59 @@ const STOCK_GROUPS = [
 const STOCK_GROUP_OF = new Map();
 for(const g of STOCK_GROUPS) for(const b of g.bases) STOCK_GROUP_OF.set(b, g.key);
 
+/* ===== 종목 영문 이름(리스트 표기 통일) =====
+   리스트 큰 글씨는 영문 티커/심볼로 통일하고, 이름은 작은 글씨로 한 번만 표기해요.
+   (거래쌍 'XUSDT'·티커 중복·일부만 한글이던 문제 정리) 매핑에 없으면 티커만 깔끔히 표기. */
+const ASSET_NAMES = {
+  // 반도체·메모리·장비
+  AAPL:"Apple", MSFT:"Microsoft", GOOGL:"Alphabet", AMZN:"Amazon", META:"Meta Platforms",
+  NVDA:"NVIDIA", TSLA:"Tesla", AVGO:"Broadcom", AMD:"AMD", INTC:"Intel", QCOM:"Qualcomm",
+  ARM:"Arm Holdings", TSM:"TSMC", ASML:"ASML", AMAT:"Applied Materials", LRCX:"Lam Research",
+  KLAC:"KLA", TER:"Teradyne", MRVL:"Marvell", ADI:"Analog Devices", TXN:"Texas Instruments",
+  MCHP:"Microchip", ON:"onsemi", SMCI:"Super Micro", ALAB:"Astera Labs", MU:"Micron",
+  SNDK:"SanDisk", WDC:"Western Digital", STX:"Seagate", SAMSUNG:"Samsung Electronics", SKHYNIX:"SK hynix",
+  // 광통신·네트워크
+  GLW:"Corning", LITE:"Lumentum", NOK:"Nokia", COHR:"Coherent", CIEN:"Ciena",
+  ANET:"Arista Networks", JNPR:"Juniper Networks", CSCO:"Cisco",
+  // SW·SaaS
+  ORCL:"Oracle", CRM:"Salesforce", ADBE:"Adobe", INTU:"Intuit", NOW:"ServiceNow",
+  SNOW:"Snowflake", DDOG:"Datadog", NET:"Cloudflare", ZS:"Zscaler", CRWD:"CrowdStrike",
+  PANW:"Palo Alto Networks", PLTR:"Palantir", SHOP:"Shopify", SPOT:"Spotify", IBM:"IBM",
+  ACN:"Accenture", MDB:"MongoDB", TEAM:"Atlassian", WDAY:"Workday", U:"Unity", ZM:"Zoom",
+  // 미디어·게임
+  NFLX:"Netflix", DIS:"Disney", RDDT:"Reddit", EA:"Electronic Arts", RBLX:"Roblox",
+  GME:"GameStop", DKNG:"DraftKings", SONY:"Sony",
+  // 크립토 관련 주식
+  MSTR:"Strategy", COIN:"Coinbase", CRCL:"Circle", HOOD:"Robinhood", MARA:"MARA Holdings",
+  RIOT:"Riot Platforms", CLSK:"CleanSpark", XYZ:"Block", GLXY:"Galaxy Digital",
+  // 모빌리티·EV
+  RIVN:"Rivian", LCID:"Lucid", NIO:"NIO", LI:"Li Auto", XPEV:"XPeng", F:"Ford",
+  GM:"General Motors", UBER:"Uber", HYUNDAI:"Hyundai Motor",
+  // 금융
+  BRKB:"Berkshire Hathaway", V:"Visa", MA:"Mastercard", AXP:"American Express", MS:"Morgan Stanley",
+  C:"Citigroup", WFC:"Wells Fargo", SCHW:"Charles Schwab", JPM:"JPMorgan Chase", GS:"Goldman Sachs",
+  BAC:"Bank of America",
+  // 소비·유통
+  HD:"Home Depot", COST:"Costco", SBUX:"Starbucks", LOW:"Lowe's", TGT:"Target", EBAY:"eBay",
+  WMT:"Walmart", MCD:"McDonald's", NKE:"Nike", PEP:"PepsiCo", PYPL:"PayPal",
+  // 중화권
+  PDD:"PDD Holdings", BIDU:"Baidu", BABA:"Alibaba", JD:"JD.com", FUTU:"Futu Holdings", BZ:"Kanzhun",
+  // 헬스케어
+  NVO:"Novo Nordisk", PFE:"Pfizer", MRK:"Merck", ABBV:"AbbVie", TMO:"Thermo Fisher",
+  LLY:"Eli Lilly", JNJ:"Johnson & Johnson", UNH:"UnitedHealth",
+  // 산업·기타
+  BE:"Bloom Energy", T:"AT&T", CAT:"Caterpillar", DE:"Deere", UPS:"UPS", HON:"Honeywell",
+  BA:"Boeing", GE:"GE Aerospace", VZ:"Verizon", XOM:"Exxon Mobil", CL:"Colgate-Palmolive",
+  // 지수·ETF
+  NAS100:"Nasdaq 100", SP500:"S&P 500", US30:"Dow Jones 30", QQQ:"Invesco QQQ", IWM:"Russell 2000",
+  IBIT:"iShares Bitcoin ETF", DIA:"Dow Jones ETF", EWJ:"MSCI Japan ETF", KORU:"Direxion Korea 3X", KOSPI:"KOSPI",
+  // 금속
+  XAU:"Gold", XAG:"Silver", XPT:"Platinum", XPD:"Palladium", COPPER:"Copper",
+  // 크립토
+  BTC:"Bitcoin", ETH:"Ethereum", SOL:"Solana", DOGE:"Dogecoin", TRX:"TRON",
+  ONDO:"Ondo", XLM:"Stellar", NEAR:"NEAR Protocol", WLD:"Worldcoin",
+};
+
 /* ===== 2) UI rows ===== */
 const rows = new Map();
 const lastValue = new Map();
@@ -657,7 +711,7 @@ function buildRows(){
     row.dataset.kospi = it.kospi ? "1" : "0";
     row.dataset.kor = it.korStock ? "1" : "0";
     row.dataset.stockGroup = (it.type === "Stock") ? (STOCK_GROUP_OF.get(it.base) || "") : "";
-    row.dataset.search = ((it.display||"")+" "+(it.krLabel||"")+" "+(it.label||"")+" "+(it.base||"")).toUpperCase();
+    row.dataset.search = ((it.display||"")+" "+(it.krLabel||"")+" "+(it.label||"")+" "+(it.base||"")+" "+(ASSET_NAMES[it.base]||"")).toUpperCase();
 
     let grp = 3;
     let grpOrder = 9999;
@@ -682,7 +736,10 @@ function buildRows(){
     const sym = document.createElement("div"); sym.className="sym";
     const left = document.createElement("div"); left.className="left";
 
-    const code = document.createElement("div"); code.className="code"; code.textContent = it.krLabel || it.display;
+    // 큰 글씨 = 영문 티커/심볼로 통일(거래쌍 'XUSDT'·한글 라벨 제거), 작은 글씨 = 회사·자산 이름(있을 때만)
+    const primaryTicker = it.label || it.base || it.display;
+    const assetName = ASSET_NAMES[it.base] || it.subLabel || "";
+    const code = document.createElement("div"); code.className="code"; code.textContent = primaryTicker;
     const meta = document.createElement("div"); meta.className="meta";
 
     const tagPerp = document.createElement("span"); tagPerp.className="tag"; tagPerp.textContent = (it.type==="FX") ? "Derived" : "Perp";
@@ -690,11 +747,12 @@ function buildRows(){
     const tagType = document.createElement("span"); tagType.className="tag "+typeTagClass(it.type);
     tagType.textContent = (it.type==="Index") ? "Index/ETF" : it.type;
 
-    const label = document.createElement("span"); label.className="muted"; label.textContent = it.label || "";
-    const subLabel = document.createElement("span"); subLabel.className="muted"; subLabel.textContent = it.subLabel ? `(${it.subLabel})` : "";
+    // 이름은 티커와 다를 때만 표기 → 티커 중복(예: 'AAPLUSDT AAPL') 제거
+    const nameEl = document.createElement("span"); nameEl.className="muted";
+    nameEl.textContent = (assetName && assetName !== primaryTicker) ? assetName : "";
 
-    meta.appendChild(tagPerp); meta.appendChild(tagEx); meta.appendChild(tagType); meta.appendChild(label);
-    if(it.subLabel) meta.appendChild(subLabel);
+    meta.appendChild(tagPerp); meta.appendChild(tagEx); meta.appendChild(tagType);
+    if(nameEl.textContent) meta.appendChild(nameEl);
     left.appendChild(code); left.appendChild(meta);
     sym.appendChild(left);
 
