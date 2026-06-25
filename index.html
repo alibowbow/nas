@@ -79,6 +79,12 @@
     .title .sub{color:var(--muted);font-size:12.5px;line-height:1.4}
     .status{display:flex;gap:11px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:12.5px;}
     .status b{color:var(--text);font-weight:600}
+    .clock{display:inline-flex;align-items:center;gap:6px;color:var(--text);font-weight:700;font-size:12.5px;font-variant-numeric:tabular-nums;letter-spacing:.01em;white-space:nowrap}
+    .clock::before{content:"🕒";font-size:12px;filter:grayscale(.1)}
+    .clock .clkDate{color:var(--muted);font-weight:600}
+    .fxBadge{display:inline-flex;align-items:center;gap:7px;padding:4px 11px;border-radius:999px;background:var(--brand-soft);border:1px solid var(--brand-line)}
+    .fxBadge .fxLabel{color:var(--muted);font-size:10.5px;font-weight:800;letter-spacing:.04em}
+    .fxBadge #usdKrwTop{color:var(--brand);font-weight:800;font-size:13.5px;font-variant-numeric:tabular-nums}
     .dot{width:9px;height:9px;border-radius:999px;background:var(--dim);display:inline-block;vertical-align:middle;transition:background .2s ease, box-shadow .2s ease;}
     .dot.live{background:var(--up);box-shadow:0 0 0 3px var(--up-soft)}
     .dot.dead{background:var(--down);box-shadow:0 0 0 3px var(--down-soft)}
@@ -207,12 +213,13 @@
       </div>
 
       <div class="status">
+        <span class="clock" id="topClock" title="한국 시간(KST)">-</span>
+        <span class="muted">|</span>
         <span><span class="dot" id="dotMexc"></span> MEXC</span>
         <span><span class="dot" id="dotHyper"></span> Hyperliquid</span>
         <span title="바이낸스 선물은 한국에서 접속이 제한될 수 있어요"><span class="dot" id="dotBinance"></span> Binance</span>
         <span class="muted">|</span>
-        <span class="muted">USD/KRW</span>
-        <span id="usdKrwTop">-</span>
+        <span class="fxBadge" title="원/달러 환율"><span class="fxLabel">USD/KRW</span><span id="usdKrwTop">-</span></span>
         <span class="muted">|</span>
         <span class="muted">업데이트:</span>
         <span id="lastAnyUpdate">-</span>
@@ -343,6 +350,26 @@ const nowHHMMSS = () => {
   const d = new Date();
   return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;
 };
+
+/* ===== 상단 시계: 한국시간(KST) 날짜 + 시:분:초, 1초 갱신 ===== */
+const KO_WD = ["일","월","화","수","목","금","토"];
+function fmtClockKST(){
+  const p = new Intl.DateTimeFormat("en-US",{
+    timeZone:"Asia/Seoul", year:"numeric", month:"2-digit", day:"2-digit",
+    hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false, weekday:"short"
+  }).formatToParts(new Date()).reduce((a,x)=>(a[x.type]=x.value,a),{});
+  const wd = KO_WD[{Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6}[p.weekday]] ?? "";
+  const hh = (p.hour === "24") ? "00" : p.hour; // hour12:false 자정 24시 보정
+  return { date:`${p.year}-${p.month}-${p.day} (${wd})`, time:`${hh}:${p.minute}:${p.second}` };
+}
+const topClock = document.getElementById("topClock");
+function tickClock(){
+  if(!topClock) return;
+  const c = fmtClockKST();
+  topClock.innerHTML = `<span class="clkDate">${c.date}</span> ${c.time}`;
+}
+tickClock();
+setInterval(tickClock, 1000);
 const fmtPrice = (n) => {
   if (!isFinite(n)) return "-";
   const abs = Math.abs(n);
