@@ -221,9 +221,6 @@
         <span class="muted">|</span>
         <span class="fxBadge" title="원/달러 환율"><span class="fxLabel">USD/KRW</span><span id="usdKrwTop">-</span></span>
         <span class="muted">|</span>
-        <span class="muted">업데이트:</span>
-        <span id="lastAnyUpdate">-</span>
-        <span class="muted">|</span>
         <button class="btn" id="reconnectBtn">재연결</button>
         <button class="btn icon" id="themeBtn" title="다크/라이트 전환" aria-label="테마 전환">🌙</button>
       </div>
@@ -314,7 +311,6 @@
 const grid = document.getElementById("grid");
 const dotBinance = document.getElementById("dotBinance");
 const dotMexc = document.getElementById("dotMexc");
-const lastAnyUpdate = document.getElementById("lastAnyUpdate");
 const sortSel = document.getElementById("sortSel");
 const listView = document.getElementById("listView");
 const tvView = document.getElementById("tvView");
@@ -346,11 +342,6 @@ if(themeBtn){
   themeBtn.textContent = (currentTheme() === "light") ? "☀️" : "🌙";
   themeBtn.addEventListener("click", ()=> applyTheme(currentTheme() === "light" ? "dark" : "light"));
 }
-const nowHHMMSS = () => {
-  const d = new Date();
-  return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;
-};
-
 /* ===== 상단 시계: 한국시간(KST) 날짜 + 시:분:초, 1초 갱신 ===== */
 const KO_WD = ["일","월","화","수","목","금","토"];
 function fmtClockKST(){
@@ -1124,7 +1115,6 @@ function scheduleRender(){
     }
     pendingRender.clear();
     updateAllKospiCards();
-    lastAnyUpdate.textContent = nowHHMMSS();
     applySort();
   });
 }
