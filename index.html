@@ -223,6 +223,7 @@
 
       <div class="filters">
         <div class="pill on" id="filterAll">전체</div>
+        <div class="pill" id="filterKor">코스피</div>
         <div class="pill" id="filterKospi">메모리</div>
         <div class="pill" id="filterCrypto">크립토</div>
         <div class="pill" id="filterStock">주식</div>
@@ -583,8 +584,8 @@ for(const fx of FRANKFURTER_FX){
 //   삼성·SK하이닉스는 제공해주신 DART 기준값, 마이크론·SNDK·WDC·STX는 통상치(교정 가능).
 const KOSPI_DEFS = [
   // 메모리 3사
-  { base:"SAMSUNG", krLabel:"삼성전자",   sub:"005930 · Samsung Elec.", logo:"삼성", color:"#1428A0", tvSymbol:"MEXC:SAMSUNGUSDT.P", krwScale:1, shares:5846278608 },
-  { base:"SKHYNIX", krLabel:"SK하이닉스", sub:"000660 · SK hynix",       logo:"SK",  color:"#E60012", tvSymbol:"MEXC:SKHYNIXUSDT.P", krwScale:1, shares:712702365 },
+  { base:"SAMSUNG", krLabel:"삼성전자",   sub:"005930 · Samsung Elec.", logo:"삼성", color:"#1428A0", tvSymbol:"MEXC:SAMSUNGUSDT.P", krwScale:1, shares:5846278608, korStock:true },
+  { base:"SKHYNIX", krLabel:"SK하이닉스", sub:"000660 · SK hynix",       logo:"SK",  color:"#E60012", tvSymbol:"MEXC:SKHYNIXUSDT.P", krwScale:1, shares:712702365, korStock:true },
   { base:"MU",      krLabel:"마이크론",    sub:"MU · Micron (DRAM/낸드)", logo:"MU",  color:"#0072CE", tvSymbol:"NASDAQ:MU",          krwScale:1, shares:1121000000, mexcSymbols:["MUSTOCK_USDT"] },
   // 스토리지 3대장(낸드·HDD)
   { base:"SNDK",    krLabel:"샌디스크",    sub:"SNDK · SanDisk (낸드)",   logo:"SD",  color:"#E4002B", tvSymbol:"NASDAQ:SNDK",        krwScale:1, shares:144000000 },
@@ -596,7 +597,7 @@ for(const k of KOSPI_DEFS){
   addInstrument({
     id:"M:"+k.base, ex:"MEXC", type:"Stock", display:k.base, label:k.base, base:k.base,
     krLabel:k.krLabel, sub:k.sub, logo:k.logo, color:k.color, tvSymbol:k.tvSymbol,
-    krwScale:k.krwScale, shares:k.shares, mexcSymbols:k.mexcSymbols, kospi:true
+    krwScale:k.krwScale, shares:k.shares, mexcSymbols:k.mexcSymbols, korStock:k.korStock, kospi:true
   });
 }
 
@@ -636,6 +637,7 @@ function buildRows(){
     row.dataset.sortVol = "-999999";
     row.dataset.sortName = it.display.toUpperCase();
     row.dataset.kospi = it.kospi ? "1" : "0";
+    row.dataset.kor = it.korStock ? "1" : "0";
     row.dataset.stockGroup = (it.type === "Stock") ? (STOCK_GROUP_OF.get(it.base) || "") : "";
     row.dataset.search = ((it.display||"")+" "+(it.krLabel||"")+" "+(it.label||"")+" "+(it.base||"")).toUpperCase();
 
@@ -860,6 +862,7 @@ function updateAllKospiCards(){
 const kospiBoard  = document.getElementById("kospiBoard");
 const filterAll   = document.getElementById("filterAll");
 const filterKospi = document.getElementById("filterKospi");
+const filterKor   = document.getElementById("filterKor");
 const filterCrypto= document.getElementById("filterCrypto");
 const filterStock = document.getElementById("filterStock");
 const filterIndex = document.getElementById("filterIndex");
@@ -874,6 +877,7 @@ function setFilter(mode){
   currentFilterMode = mode;
   filterAll.classList.toggle("on", mode==="ALL");
   filterKospi.classList.toggle("on", mode==="KOSPI");
+  filterKor.classList.toggle("on", mode==="KOR");
   filterCrypto.classList.toggle("on", mode==="Crypto");
   filterStock.classList.toggle("on", mode==="Stock");
   filterIndex.classList.toggle("on", mode==="Index");
@@ -896,6 +900,7 @@ function setFilter(mode){
       : (
           (mode==="ALL") ||
           (mode==="KOSPI" && row.dataset.kospi==="1") ||
+          (mode==="KOR" && row.dataset.kor==="1") ||
           (mode==="Crypto" && t==="Crypto") ||
           (mode==="Stock" && t==="Stock" && (stockSubFilter==="ALL" || row.dataset.stockGroup===stockSubFilter)) ||
           (mode==="Index" && t==="Index") ||
@@ -931,6 +936,7 @@ function pickCategory(mode){
   setFilter(mode);
 }
 filterAll.onclick    = () => pickCategory("ALL");
+filterKor.onclick    = () => pickCategory("KOR");
 filterKospi.onclick  = () => pickCategory("KOSPI");
 filterCrypto.onclick = () => pickCategory("Crypto");
 filterStock.onclick  = () => pickCategory("Stock");
@@ -1264,10 +1270,14 @@ function connectMexc(){
             const ids = mexcKlineToIds.get(sym);
             if(ids){
               for(const id of ids){
-                dailyOpenById.set(id, dayOpen);
-
-                // 이미 last가 있으면 즉시 변동률 재계산
                 const cur = lastValue.get(id);
+                // 심볼 충돌 방어: 일봉 시가가 현재가와 5배 이상 차이나면(다른 자산) 무시
+                if(id.startsWith("M:") && cur && isFinite(cur.last) && cur.last > 0){
+                  const r = dayOpen / cur.last;
+                  if(r > 5 || r < 0.2) continue;
+                }
+                dailyOpenById.set(id, dayOpen);
+                // 이미 last가 있으면 즉시 변동률 재계산
                 if(cur && isFinite(cur.last)){
                   applyUpdate(id, cur.last, NaN, cur.vol, dayOpen);
                 }
