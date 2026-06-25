@@ -601,6 +601,19 @@ for(const k of KOSPI_DEFS){
   });
 }
 
+/* ===== 코스피 개별: 메모리 보드엔 없지만 리스트엔 노출 =====
+   '보드에서만 제외'였지 리스트에서 빼라는 게 아니었으므로 다시 살려둬요.
+   현대차 = MEXC 토큰화 선물(코스피·모빌리티 필터), KORU = Direxion 한국 3X ETF(코스피·지수 필터).
+   둘 다 보드 플래그(kospi) 없이 korStock만 줘서 '코스피' 필터엔 뜨고 보드 카드엔 안 떠요. */
+addInstrument({
+  id:"M:HYUNDAI", ex:"MEXC", type:"Stock", display:"HYUNDAI", label:"HYUNDAI", base:"HYUNDAI",
+  krLabel:"현대차", subLabel:"005380 · Hyundai Motor", korStock:true
+});
+addInstrument({
+  id:"M:KORU", ex:"MEXC", type:"Index", display:"KORU", label:"KORU", base:"KORU",
+  krLabel:"KORU 한국 3X", subLabel:"Direxion 한국 MSCI 3X", korStock:true
+});
+
 /* ===== 주식 하위 분류(섹터) — '주식' 탭에서 2차 필터로 노출 ===== */
 const STOCK_GROUPS = [
   { key:"memory",     label:"메모리",        bases:["SAMSUNG","SKHYNIX","MU","SNDK","WDC","STX"] },
