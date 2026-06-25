@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>코스피 보드 · TradFi/Crypto Live (MEXC · Hyperliquid · Binance)</title>
+  <title>메모리 보드 · TradFi/Crypto Live (MEXC · Hyperliquid · Binance)</title>
   <meta name="theme-color" content="#0E1117" media="(prefers-color-scheme: dark)" />
   <meta name="theme-color" content="#EEF1F5" media="(prefers-color-scheme: light)" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -102,6 +102,9 @@
     .sortWrap{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:12.5px}
     select{border:1px solid var(--line-2);background:var(--surface-2);color:var(--text);padding:9px 12px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;outline:none;cursor:pointer;}
     select:hover{border-color:var(--brand-line)}
+    .search{border:1px solid var(--line-2);background:var(--surface-2);color:var(--text);padding:9px 12px;border-radius:var(--radius-sm);font-size:13px;outline:none;width:190px;max-width:44vw}
+    .search:focus{border-color:var(--brand-line);background:var(--surface)}
+    .search::placeholder{color:var(--dim)}
     .subfilters{display:none;flex-basis:100%;width:100%;gap:7px;flex-wrap:nowrap;align-items:center;border-top:1px solid var(--line);margin-top:2px;padding-top:13px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
     .subfilters::-webkit-scrollbar{display:none}
     .subfilters.show{display:flex}
@@ -196,9 +199,9 @@
   <div id="listView">
     <div class="top">
       <div class="title">
-        <h1>코스피 보드 · TradFi/Crypto Live</h1>
+        <h1>메모리 보드 · TradFi/Crypto Live</h1>
         <div class="sub">
-          삼성전자·SK하이닉스·마이크론·현대차 해외 추정가(MEXC 선물·USD/KRW 환산) + 크립토/지수/원자재 실시간 ·
+          메모리·스토리지 6사(삼성·SK하이닉스·마이크론·샌디스크·WD·씨게이트) 원화환산가 + 크립토/지수/원자재 실시간 ·
           행 클릭하면 TradingView 차트로 전환(뒤로 가능)
         </div>
       </div>
@@ -220,7 +223,7 @@
 
       <div class="filters">
         <div class="pill on" id="filterAll">전체</div>
-        <div class="pill" id="filterKospi">코스피</div>
+        <div class="pill" id="filterKospi">메모리</div>
         <div class="pill" id="filterCrypto">크립토</div>
         <div class="pill" id="filterStock">주식</div>
         <div class="pill" id="filterIndex">지수/ETF</div>
@@ -232,6 +235,7 @@
       <div class="subfilters" id="stockSub"></div>
 
       <div class="sortWrap">
+        <input class="search" id="searchInput" type="search" placeholder="검색 (NVDA, 삼성…)" autocomplete="off" />
         <span class="muted">정렬</span>
         <select id="sortSel">
           <option value="default">기본정렬</option>
@@ -247,14 +251,14 @@
     <!-- KOSPI BOARD -->
     <section class="kospiBoard" id="kospiBoard">
       <div class="kospiHead">
-        <h2>코스피 보드</h2>
-        <span class="badge">해외 파생 추정가</span>
-        <span class="src" id="kospiSrc">MEXC USDT 무기한 선물 · USD/KRW 환산</span>
+        <h2>메모리 보드</h2>
+        <span class="badge">메모리·스토리지</span>
+        <span class="src" id="kospiSrc">메모리 3사 + 스토리지 3대장 · USD/KRW 환산</span>
       </div>
       <div class="kGrid" id="kGrid"></div>
       <div class="note" style="margin-top:8px">
-        삼성전자·SK하이닉스·현대차는 MEXC USDT 무기한 선물(<span class="muted">…STOCK_USDT</span>)의 해외 가격을, 마이크론(메모리 3사)은 미국 상장가를 USD/KRW로 환산한 <b>추정가</b>예요. 시총도 원화로 표기해요.
-        한국 <b>단일종목</b> 선물은 현재 이 3개뿐이라, 카카오·네이버·LG엔솔 등 나머지는 <b>KORU</b>(Direxion 한국 3X ETF)로 한국 증시를 3배 레버리지로 한 번에 담았어요.
+        <b>메모리</b>(삼성전자·SK하이닉스·마이크론)와 <b>스토리지</b>(샌디스크·WD·씨게이트) 6사를 한 화면에서 비교해요.
+        삼성·SK하이닉스는 MEXC 무기한 선물, 나머지는 미국 상장가를 USD/KRW로 환산한 <b>추정가</b>이고 시총도 원화로 표기해요.
         공식 시세가 아니며 실제가와 차이가 있을 수 있어요(비공식 정보 · 투자권유 아님). 등락은 일봉 시가 기준이에요.
       </div>
     </section>
@@ -419,10 +423,10 @@ const MEXC_DISPLAY = [
   "JDUSDT","JNJUSDT","JPMUSDT","LLYUSDT","LRCXUSDT","MAUSDT","MCDUSDT","METAUSDT",
   "MRVLUSDT","MSFTUSDT","MSTRUSDT","NAS100USDT","NFLXUSDT","NVDAUSDT","NKEUSDT",
   "ORCLUSDT","PANWUSDT","PEPUSDT","PLTRUSDT","PYPLUSDT","QCOMUSDT","QQQUSDT","RDDTUSDT","HOODUSDT",
-  "SHOPUSDT","SMCIUSDT","SNDKUSDT","SPOTUSDT","SP500USDT","TSLAUSDT","UBERUSDT","UNHUSDT","US30USDT",
+  "SHOPUSDT","SMCIUSDT","SPOTUSDT","SP500USDT","TSLAUSDT","UBERUSDT","UNHUSDT","US30USDT",
   "VZUSDT","WMTUSDT","XOMUSDT",
   // ── 추가 종목(2026) ──
-  "WDCUSDT","STXUSDT","TSMUSDT","ONUSDT","TXNUSDT","ADIUSDT","MCHPUSDT","KLACUSDT","TERUSDT","ALABUSDT",
+  "TSMUSDT","ONUSDT","TXNUSDT","ADIUSDT","MCHPUSDT","KLACUSDT","TERUSDT","ALABUSDT",
   "GLWUSDT","LITEUSDT","NOKUSDT","COHRUSDT","CIENUSDT","ANETUSDT","JNPRUSDT",
   "SONYUSDT","DISUSDT","EAUSDT","RBLXUSDT",
   "NOWUSDT","SNOWUSDT","DDOGUSDT","NETUSDT","ZSUSDT","ZMUSDT","UUSDT","MDBUSDT","TEAMUSDT","WDAYUSDT",
@@ -576,12 +580,16 @@ for(const fx of FRANKFURTER_FX){
    ※ 선물 1계약 가격이 실제 1주 가격과 배수가 다를 수 있어요. 그땐 krwScale로 보정하세요. */
 // 트레이딩뷰는 KRX 실시간을 막아 국장 심볼이 안 떠서, MEXC 토큰화 선물(표시 티커 …USDT.P)로 연결해요.
 // shares = 발행주식수(보통주). 시총 = 원화 추정가 × shares 로 라이브 계산해요.
-//   삼성·SK하이닉스는 제공해주신 DART 기준값, 현대차는 통상치(오픈다트로 교정 가능).
+//   삼성·SK하이닉스는 제공해주신 DART 기준값, 마이크론·SNDK·WDC·STX는 통상치(교정 가능).
 const KOSPI_DEFS = [
+  // 메모리 3사
   { base:"SAMSUNG", krLabel:"삼성전자",   sub:"005930 · Samsung Elec.", logo:"삼성", color:"#1428A0", tvSymbol:"MEXC:SAMSUNGUSDT.P", krwScale:1, shares:5846278608 },
   { base:"SKHYNIX", krLabel:"SK하이닉스", sub:"000660 · SK hynix",       logo:"SK",  color:"#E60012", tvSymbol:"MEXC:SKHYNIXUSDT.P", krwScale:1, shares:712702365 },
-  { base:"MU",      krLabel:"마이크론",    sub:"MU · Micron (메모리)",    logo:"MU",  color:"#0072CE", tvSymbol:"NASDAQ:MU",          krwScale:1, shares:1117000000 },
-  { base:"HYUNDAI", krLabel:"현대차",     sub:"005380 · Hyundai Motor",  logo:"현대", color:"#002C5F", tvSymbol:"MEXC:HYUNDAIUSDT.P", krwScale:1, shares:209416191 },
+  { base:"MU",      krLabel:"마이크론",    sub:"MU · Micron (DRAM/낸드)", logo:"MU",  color:"#0072CE", tvSymbol:"NASDAQ:MU",          krwScale:1, shares:1117000000 },
+  // 스토리지 3대장(낸드·HDD)
+  { base:"SNDK",    krLabel:"샌디스크",    sub:"SNDK · SanDisk (낸드)",   logo:"SD",  color:"#E4002B", tvSymbol:"NASDAQ:SNDK",        krwScale:1, shares:144000000 },
+  { base:"WDC",     krLabel:"웨스턴디지털", sub:"WDC · Western Digital",   logo:"WD",  color:"#2B3A8F", tvSymbol:"NASDAQ:WDC",         krwScale:1, shares:348000000 },
+  { base:"STX",     krLabel:"씨게이트",    sub:"STX · Seagate (HDD)",     logo:"ST",  color:"#6EBE49", tvSymbol:"NASDAQ:STX",         krwScale:1, shares:212000000 },
 ];
 for(const k of KOSPI_DEFS){
   addInstrument({
@@ -590,20 +598,6 @@ for(const k of KOSPI_DEFS){
     krwScale:k.krwScale, shares:k.shares, kospi:true
   });
 }
-// KOSPI 지수(있으면 라이브)
-addInstrument({
-  id:"M:KOSPI", ex:"MEXC", type:"Index", display:"KOSPI", label:"코스피 지수", base:"KOSPI",
-  krLabel:"KOSPI", sub:"코스피 종합지수", tvSymbol:"KRX:KOSPI",
-  logo:"코", color:"#6D28D9", unit:"", kospi:true, kospiQuote:true, kospiIndex:true
-});
-// KORU — Direxion 한국 MSCI 3X 레버리지 ETF. 한국 증시 전체를 3배로 추종(공격적).
-// 시세는 MEXC USDT 무기한 선물(KORU_USDT 등), 차트는 NYSE 'AMEX:KORU'.
-addInstrument({
-  id:"M:KORU", ex:"MEXC", type:"Index", display:"KORU", label:"KORU", base:"KORU",
-  krLabel:"KORU 한국 3X", sub:"Direxion 한국 MSCI 3배 레버리지", tvSymbol:"AMEX:KORU",
-  logo:"3X", color:"#E11D48", unit:"$", liveLabel:"Direxion KORU · MEXC 선물",
-  kospi:true, kospiQuote:true
-});
 
 /* ===== 주식 하위 분류(섹터) — '주식' 탭에서 2차 필터로 노출 ===== */
 const STOCK_GROUPS = [
@@ -642,6 +636,7 @@ function buildRows(){
     row.dataset.sortName = it.display.toUpperCase();
     row.dataset.kospi = it.kospi ? "1" : "0";
     row.dataset.stockGroup = (it.type === "Stock") ? (STOCK_GROUP_OF.get(it.base) || "") : "";
+    row.dataset.search = ((it.display||"")+" "+(it.krLabel||"")+" "+(it.label||"")+" "+(it.base||"")).toUpperCase();
 
     let grp = 3;
     let grpOrder = 9999;
@@ -870,7 +865,9 @@ const filterIndex = document.getElementById("filterIndex");
 const filterFX    = document.getElementById("filterFX");
 const filterCommo = document.getElementById("filterCommo");
 const filterEnergy= document.getElementById("filterEnergy");
+const searchInput = document.getElementById("searchInput");
 let currentFilterMode = "ALL";
+let searchQuery = "";
 
 function setFilter(mode){
   currentFilterMode = mode;
@@ -883,24 +880,28 @@ function setFilter(mode){
   filterCommo.classList.toggle("on", mode==="Commodity");
   filterEnergy.classList.toggle("on", mode==="Energy");
 
-  // 코스피 보드는 '전체'·'코스피' 탭에서만 노출, 그 외 카테고리 탭에선 숨김
+  // 메모리 보드는 '전체'·'메모리' 탭에서만 노출, 그 외 카테고리 탭에선 숨김
   if(kospiBoard) kospiBoard.style.display = (mode==="ALL" || mode==="KOSPI") ? "" : "none";
 
   // 주식 하위 분류 칩: '주식' 탭에서만 노출, 다른 탭으로 가면 분류를 '전체'로 초기화
   if(mode !== "Stock") setStockSub("ALL");
   if(stockSub) stockSub.classList.toggle("show", mode === "Stock");
 
+  const q = searchQuery.trim().toUpperCase();
   for(const {row} of rows.values()){
     const t = row.dataset.type;
-    const matches =
-      (mode==="ALL") ||
-      (mode==="KOSPI" && row.dataset.kospi==="1") ||
-      (mode==="Crypto" && t==="Crypto") ||
-      (mode==="Stock" && t==="Stock" && (stockSubFilter==="ALL" || row.dataset.stockGroup===stockSubFilter)) ||
-      (mode==="Index" && t==="Index") ||
-      (mode==="FX" && t==="FX") ||
-      (mode==="Energy" && t==="Energy") ||
-      (mode==="Commodity" && t==="Commodity");
+    const matches = q
+      ? (row.dataset.search || "").includes(q)   // 검색 중엔 카테고리 무시, 텍스트 일치만
+      : (
+          (mode==="ALL") ||
+          (mode==="KOSPI" && row.dataset.kospi==="1") ||
+          (mode==="Crypto" && t==="Crypto") ||
+          (mode==="Stock" && t==="Stock" && (stockSubFilter==="ALL" || row.dataset.stockGroup===stockSubFilter)) ||
+          (mode==="Index" && t==="Index") ||
+          (mode==="FX" && t==="FX") ||
+          (mode==="Energy" && t==="Energy") ||
+          (mode==="Commodity" && t==="Commodity")
+        );
     // 시세를 못 받은 MEXC 행(dead)은 숨김
     row.style.display = (matches && row.dataset.dead !== "1") ? "" : "none";
   }
@@ -920,14 +921,22 @@ function pruneDeadMexc(){
 function resetDeadFlags(){
   for(const { row } of rows.values()) if(row.dataset.dead === "1") row.dataset.dead = "0";
 }
-filterAll.onclick    = () => setFilter("ALL");
-filterKospi.onclick  = () => setFilter("KOSPI");
-filterCrypto.onclick = () => setFilter("Crypto");
-filterStock.onclick  = () => setFilter("Stock");
-filterIndex.onclick  = () => setFilter("Index");
-filterFX.onclick     = () => setFilter("FX");
-filterCommo.onclick  = () => setFilter("Commodity");
-filterEnergy.onclick = () => setFilter("Energy");
+if(searchInput){
+  searchInput.addEventListener("input", ()=>{ searchQuery = searchInput.value || ""; setFilter(currentFilterMode); });
+}
+// 카테고리 탭을 누르면 검색어를 비우고 해당 탭으로(검색과 탭이 서로 충돌하지 않게)
+function pickCategory(mode){
+  if(searchQuery){ searchQuery = ""; if(searchInput) searchInput.value = ""; }
+  setFilter(mode);
+}
+filterAll.onclick    = () => pickCategory("ALL");
+filterKospi.onclick  = () => pickCategory("KOSPI");
+filterCrypto.onclick = () => pickCategory("Crypto");
+filterStock.onclick  = () => pickCategory("Stock");
+filterIndex.onclick  = () => pickCategory("Index");
+filterFX.onclick     = () => pickCategory("FX");
+filterCommo.onclick  = () => pickCategory("Commodity");
+filterEnergy.onclick = () => pickCategory("Energy");
 
 /* ===== 주식 하위 분류 칩 ===== */
 const stockSub = document.getElementById("stockSub");
@@ -1367,7 +1376,7 @@ function baseCandidates(base){
 function subscribeMexcFinal(){
   const mexcRows = INSTRUMENTS
     .filter(x => x.ex === "MEXC" && (x.type==="Stock" || x.type==="Index" || x.type==="Energy" || x.type==="Commodity"))
-    .sort((a,b)=> (b.kospi?1:0) - (a.kospi?1:0)); // 코스피 보드 종목을 큐 맨 앞으로
+    .sort((a,b)=> (b.kospi?1:0) - (a.kospi?1:0)); // 메모리 보드 종목을 큐 맨 앞으로
 
   // 종목별 후보 심볼 목록(이미 구독한 건 제외 → 워밍업 보충 패스가 헛돌지 않음)
   const perInstrument = mexcRows.map(it => {
@@ -1618,7 +1627,7 @@ connectMexc();
 startFrankfurterFx();
 startCoinGecko();
 updateAllKospiCards();
-setFilter("ALL"); // 처음 로드 = '전체' 탭: 코스피 보드 + 전체 목록 노출
+setFilter("ALL"); // 처음 로드 = '전체' 탭: 메모리 보드 + 전체 목록 노출
 </script>
 </body>
 </html>
