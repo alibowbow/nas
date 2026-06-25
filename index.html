@@ -585,17 +585,18 @@ const KOSPI_DEFS = [
   // 메모리 3사
   { base:"SAMSUNG", krLabel:"삼성전자",   sub:"005930 · Samsung Elec.", logo:"삼성", color:"#1428A0", tvSymbol:"MEXC:SAMSUNGUSDT.P", krwScale:1, shares:5846278608 },
   { base:"SKHYNIX", krLabel:"SK하이닉스", sub:"000660 · SK hynix",       logo:"SK",  color:"#E60012", tvSymbol:"MEXC:SKHYNIXUSDT.P", krwScale:1, shares:712702365 },
-  { base:"MU",      krLabel:"마이크론",    sub:"MU · Micron (DRAM/낸드)", logo:"MU",  color:"#0072CE", tvSymbol:"NASDAQ:MU",          krwScale:1, shares:1121000000 },
+  { base:"MU",      krLabel:"마이크론",    sub:"MU · Micron (DRAM/낸드)", logo:"MU",  color:"#0072CE", tvSymbol:"NASDAQ:MU",          krwScale:1, shares:1121000000, mexcSymbols:["MUSTOCK_USDT"] },
   // 스토리지 3대장(낸드·HDD)
   { base:"SNDK",    krLabel:"샌디스크",    sub:"SNDK · SanDisk (낸드)",   logo:"SD",  color:"#E4002B", tvSymbol:"NASDAQ:SNDK",        krwScale:1, shares:144000000 },
   { base:"WDC",     krLabel:"웨스턴디지털", sub:"WDC · Western Digital",   logo:"WD",  color:"#2B3A8F", tvSymbol:"NASDAQ:WDC",         krwScale:1, shares:348000000 },
-  { base:"STX",     krLabel:"씨게이트",    sub:"STX · Seagate (HDD)",     logo:"ST",  color:"#6EBE49", tvSymbol:"NASDAQ:STX",         krwScale:1, shares:212000000 },
+  // STX는 스택스(암호화폐)와 티커 충돌 → 시게이트 주식 계약에만 고정(STXSTOCK_USDT)
+  { base:"STX",     krLabel:"씨게이트",    sub:"STX · Seagate (HDD)",     logo:"ST",  color:"#6EBE49", tvSymbol:"NASDAQ:STX",         krwScale:1, shares:212000000, mexcSymbols:["STXSTOCK_USDT"] },
 ];
 for(const k of KOSPI_DEFS){
   addInstrument({
     id:"M:"+k.base, ex:"MEXC", type:"Stock", display:k.base, label:k.base, base:k.base,
     krLabel:k.krLabel, sub:k.sub, logo:k.logo, color:k.color, tvSymbol:k.tvSymbol,
-    krwScale:k.krwScale, shares:k.shares, kospi:true
+    krwScale:k.krwScale, shares:k.shares, mexcSymbols:k.mexcSymbols, kospi:true
   });
 }
 
@@ -1305,8 +1306,13 @@ function connectMexc(){
         const id = mexcSymbolToId.get(sym);
         if(id && id !== "__FX_BASE__" && isFinite(last)){
           ensureMexcKline(sym); // 유효 심볼 확인됨 → 이제 일봉 kline 구독
-          // 크립토(B:*)는 Binance/Hyperliquid가 최신이면 MEXC 가격은 양보(폴백 전용) — 가격 깜빡임 방지
           const cur = lastValue.get(id);
+          // 심볼 충돌(동명 크립토 등)로 인한 비현실적 점프 무시 — MEXC 주식/지수 행이 한 틱에 4배↑ 변하면 다른 자산
+          if(cur && isFinite(cur.last) && cur.last > 0 && id.startsWith("M:")){
+            const ratio = last / cur.last;
+            if(ratio > 4 || ratio < 0.25) return;
+          }
+          // 크립토(B:*)는 Binance/Hyperliquid가 최신이면 MEXC 가격은 양보(폴백 전용) — 가격 깜빡임 방지
           const cryptoYield = id.startsWith("B:") && cur && (cur.src==="BINANCE"||cur.src==="HYPER") && (Date.now()-cur.ts)<6000;
           // dayOpen은 Day1 kline에서만 저장해서 일봉 기준으로 계산(시가 수신 전엔 '-')
           if(!cryptoYield) applyUpdate(id, last, pct24h, vol, NaN, "MEXC");
