@@ -624,6 +624,11 @@ for(const g of STOCK_GROUPS) for(const b of g.bases) STOCK_GROUP_OF.set(b, g.key
 const rows = new Map();
 const lastValue = new Map();
 const dailyOpenById = new Map();
+// 한국주(코스피): 전일 KRX 마감(15:30 KST=06:30 UTC) 시점의 선물가 = 본장 등락률 기준가
+// MEXC contract kline(REST)으로 받아오며, 실패(CORS/네트워크) 시 dailyOpen(09:00 시가)으로 자동 폴백.
+const krxRefOpenById = new Map();  // id -> 전일 15:30 기준가
+const krxAnchorMsById = new Map(); // id -> 위 값의 기준일(anchorMs)
+const krxFetchAtById = new Map();  // id -> 마지막 fetch 시도(ms), 실패 재시도 throttle
 const pendingRender = new Set();
 let rafScheduled = false;
 
@@ -1030,8 +1035,9 @@ function resolvePct(id, last, fallbackPct, dayOpen){
   // dayOpen이 유효하면 저장
   if(isFinite(dayOpen) && dayOpen > 0) dailyOpenById.set(id, dayOpen);
 
-  const refOpen = dailyOpenById.get(id);
-  // ✅ 일봉 시가가 있으면 "일봉 기준"으로 계산
+  // 한국주는 전일 KRX 마감(15:30 KST) 기준가가 있으면 우선 사용 → 본장 등락률과 일치
+  const refOpen = krxRefOpenById.has(id) ? krxRefOpenById.get(id) : dailyOpenById.get(id);
+  // ✅ 기준가가 있으면 그 기준으로 계산
   if(isFinite(refOpen) && refOpen > 0 && isFinite(last)){
     return ((last / refOpen) - 1) * 100;
   }
@@ -1178,6 +1184,7 @@ const fxState = new Map();
 const mexcStockMap = new Map();   // base -> STOCK_USDT
 const mexcContracts = new Set();   // 워밍업에서 발견한 모든 *_USDT 계약 심볼
 const mexcTickerToSym = new Map(); // 표시 티커 -> 실제 계약심볼(예: TSLA -> TESLA_USDT)
+const mexcLiveSymById = new Map(); // 종목 id -> 현재 살아있는(틱 도착) 실제 MEXC 계약심볼
 
 // ✅ Day1 kline 매핑
 const mexcKlineToIds = new Map();     // symbol -> Set(instrumentId)
@@ -1195,6 +1202,7 @@ function connectMexc(){
   mexcStockMap.clear();
   mexcContracts.clear();
   mexcTickerToSym.clear();
+  mexcLiveSymById.clear();
   mexcKlineToIds.clear();
   mexcKlineSubscribed.clear();
 
@@ -1322,6 +1330,8 @@ function connectMexc(){
             const ratio = last / cur.last;
             if(ratio > 4 || ratio < 0.25) return;
           }
+          // 이 심볼이 이 종목의 실제 살아있는 계약 → 전일 15:30 기준가 REST 조회에 사용
+          if(id.startsWith("M:")) mexcLiveSymById.set(id, sym);
           // 크립토(B:*)는 Binance/Hyperliquid가 최신이면 MEXC 가격은 양보(폴백 전용) — 가격 깜빡임 방지
           const cryptoYield = id.startsWith("B:") && cur && (cur.src==="BINANCE"||cur.src==="HYPER") && (Date.now()-cur.ts)<6000;
           // dayOpen은 Day1 kline에서만 저장해서 일봉 기준으로 계산(시가 수신 전엔 '-')
@@ -1600,6 +1610,62 @@ window.addEventListener("keydown", (e)=>{ if(e.key === "Escape" && tvView.style.
 // 휴대폰/브라우저 뒤로가기: 차트가 열려 있으면 사이트를 떠나지 않고 목록으로 복귀
 window.addEventListener("popstate", ()=>{ if(tvView.style.display === "block") goBack(); });
 
+/* ===== 코스피(한국주) 등락률: 전일 KRX 마감(15:30 KST) 기준 =====
+   토큰화 선물은 24시간 거래돼 일봉 시가(09:00 KST)만으로는 본장 등락률과 어긋나요.
+   전일 15:30 KST(=06:30 UTC) 시점의 선물가를 MEXC contract kline(REST)으로 받아 기준가로 사용.
+   요청이 CORS/네트워크로 막히면 기준가를 못 채워 자동으로 일봉 시가(09:00) 기준으로 폴백돼요. */
+function prevKrxCloseMs(nowMs){
+  const d = new Date(nowMs);
+  // 15:30 KST = 06:30 UTC (날짜 경계 안 넘음: 그 UTC 시각의 요일 == KST 요일)
+  let anchor = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 6, 30, 0);
+  if(nowMs < anchor) anchor -= 86400000;        // 아직 오늘 마감(15:30) 전 → 전일 마감 기준
+  const wd = new Date(anchor).getUTCDay();        // 0=일 … 6=토
+  if(wd === 6) anchor -= 86400000;                // 토 → 금
+  else if(wd === 0) anchor -= 2 * 86400000;       // 일 → 금
+  return anchor;                                   // (공휴일은 보정 안 함 — 근접 기준가로 충분)
+}
+async function fetchKrxRefOpen(symbol, anchorMs){
+  const anchorSec = Math.floor(anchorMs / 1000);
+  const url = "https://contract.mexc.com/api/v1/contract/kline/" + symbol +
+              "?interval=Min30&start=" + (anchorSec - 7200) + "&end=" + (anchorSec + 1800);
+  const res = await fetch(url, { cache:"no-store" });
+  if(!res.ok) throw new Error("http " + res.status);
+  const j = await res.json();
+  const data = j && j.data;
+  if(!data || !Array.isArray(data.time) || !data.time.length) throw new Error("no data");
+  // 06:30 UTC(=15:30 KST) 시점에 가장 근접한 캔들의 시가 = 전일 본장 마감 기준가
+  let bestIdx = -1, bestDiff = Infinity;
+  for(let i = 0; i < data.time.length; i++){
+    const diff = Math.abs(data.time[i] - anchorSec);
+    if(diff < bestDiff){ bestDiff = diff; bestIdx = i; }
+  }
+  if(bestIdx < 0) throw new Error("no candle");
+  // 실거래가(realOpen) 우선 — 티커 lastPrice와 같은 기준이라야 등락률이 정확
+  const openArr = (Array.isArray(data.realOpen) && data.realOpen.length === data.time.length)
+    ? data.realOpen : data.open;
+  const open = parseFloat(openArr[bestIdx]);
+  if(!isFinite(open) || open <= 0) throw new Error("bad open");
+  return open;
+}
+function refreshKrxAnchors(){
+  const now = Date.now();
+  const anchorMs = prevKrxCloseMs(now);
+  for(const [id, c] of kospiCardEls){
+    if(!c.def || !c.def.korStock) continue;                                    // 한국주(삼성·SK하이닉스)만
+    if(krxRefOpenById.has(id) && krxAnchorMsById.get(id) === anchorMs) continue; // 이미 확보(같은 기준일)
+    const sym = mexcLiveSymById.get(id);
+    if(!sym) continue;                                                          // 살아있는 계약심볼 아직 모름
+    if(now - (krxFetchAtById.get(id) || 0) < 90000) continue;                   // 실패 재시도 throttle(90s)
+    krxFetchAtById.set(id, now);
+    fetchKrxRefOpen(sym, anchorMs).then(open => {
+      krxRefOpenById.set(id, open);
+      krxAnchorMsById.set(id, anchorMs);
+      const cur = lastValue.get(id);
+      if(cur && isFinite(cur.last)) applyUpdate(id, cur.last, NaN, cur.vol, NaN, cur.src);
+    }).catch(()=>{ /* CORS/네트워크 실패 → 일봉 시가(09:00) 기준으로 자동 폴백 */ });
+  }
+}
+
 /* ===== Reconnect + Start ===== */
 function closeAll(){
   try{ wsBinance && wsBinance.close(); }catch(_){}
@@ -1620,6 +1686,9 @@ document.getElementById("reconnectBtn").onclick = ()=> {
   lastValue.clear();
   pendingRender.clear();
   dailyOpenById.clear();
+  krxRefOpenById.clear();
+  krxAnchorMsById.clear();
+  krxFetchAtById.clear();
   connectBinance();
   connectHyperliquid();
   connectMexc();
@@ -1644,6 +1713,10 @@ startFrankfurterFx();
 startCoinGecko();
 updateAllKospiCards();
 setFilter("ALL"); // 처음 로드 = '전체' 탭: 메모리 보드 + 전체 목록 노출
+// 코스피(한국주) 등락률을 전일 KRX 마감(15:30) 기준으로 보정 — 심볼 해석 후/일자 롤오버 대응
+setTimeout(refreshKrxAnchors, 7000);
+setTimeout(refreshKrxAnchors, 18000);
+setInterval(refreshKrxAnchors, 60000);
 </script>
 </body>
 </html>
