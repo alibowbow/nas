@@ -344,7 +344,7 @@ const tvChart = document.getElementById("tvChart");
 /* ===== 사용자 설정 ===== */
 // 코스피200 야간선물 보드용 프록시(Cloudflare Worker) 주소. 배포 후 여기에 붙여넣으세요.
 // 비워두면 코스피 탭 보드에 '설정 안내'가 떠요. (배포법: 저장소 WORKER_SETUP.md)
-const KOSPI_NIGHT_PROXY_URL = "";   // 예: "https://kospi-night.<계정>.workers.dev"
+const KOSPI_NIGHT_PROXY_URL = "https://kospinight.alibowbow.workers.dev";   // Cloudflare Worker
 const KOSPI_NIGHT_POLL_MS   = 30000;
 
 function setDot(dot, state){
