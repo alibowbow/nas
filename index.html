@@ -1059,7 +1059,26 @@ function resetDeadFlags(){
 }
 
 /* ===== 코스피200 야간선물 보드 (Cloudflare Worker 프록시 경유) ===== */
-let nightTimer = null, nightInFlight = false, nightLastOk = false;
+let nightTimer = null, nightInFlight = false, nightLastOk = false, nightView = "";
+// 야간장 시간(KST): 평일 18:00 ~ 익일 06:00. 그 외엔 휴장 → 폴링 중지.
+function nowKSTParts(){
+  const p = new Intl.DateTimeFormat("en-US",{ timeZone:"Asia/Seoul", hour:"2-digit", weekday:"short", hour12:false })
+    .formatToParts(new Date()).reduce((a,x)=>(a[x.type]=x.value,a),{});
+  let h = parseInt(p.hour,10); if(h===24) h=0;
+  const dow = {Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6}[p.weekday];
+  return { h, dow };
+}
+function isNightSession(){
+  const { h, dow } = nowKSTParts();
+  if(h >= 18) return dow >= 1 && dow <= 5;   // 18:00~23:59 : 월~금 개장
+  if(h < 6)   return dow >= 2 && dow <= 6;    // 00:00~05:59 : 화~토(전날 평일 세션 연장)
+  return false;                               // 06:00~17:59 : 휴장
+}
+function nextNightOpen(){
+  const { h, dow } = nowKSTParts();
+  if(dow >= 1 && dow <= 5 && h < 18) return "오늘 18:00";  // 평일 낮(또는 월 새벽 휴장)
+  return "다음 평일 18:00";                                 // 주말 등
+}
 const nightNum = (x) => {
   if(x == null) return NaN;
   if(typeof x === "number") return x;
@@ -1082,6 +1101,13 @@ function nightCardHTML(o){
 }
 function renderNight(s){
   if(!nightGrid) return;
+  nightView = s.kind;
+  if(s.kind === "closed"){
+    nightSrc.textContent = "휴장";
+    nightGrid.innerHTML = nightCardHTML({ price:"휴장", deltaText:"야간장 시간 아님", sub:"평일 18:00~06:00 KST", live:false, foot:"다음 개장 " + (s.nextOpen || "평일 18:00") });
+    nightNote.textContent = "코스피200 야간선물은 평일 18:00~익일 06:00(KST)에만 거래돼요. 지금은 휴장이라 데이터 수신을 멈췄어요. 다음 개장: " + (s.nextOpen || "평일 18:00") + ".";
+    return;
+  }
   if(s.kind === "config"){
     nightSrc.textContent = "미설정";
     nightGrid.innerHTML = nightCardHTML({ price:"설정 필요", deltaText:"프록시 URL을 넣어주세요", sub:"Cloudflare Worker 미설정", live:false, foot:"미설정" });
@@ -1119,6 +1145,11 @@ function renderNight(s){
 }
 async function pollNight(){
   if(!KOSPI_NIGHT_PROXY_URL){ renderNight({ kind:"config" }); return; }
+  if(!isNightSession()){
+    // 휴장 시간 → 워커 요청 안 함(데이터 수신 중지). 안내는 1회만 렌더.
+    if(nightView !== "closed"){ nightLastOk = false; renderNight({ kind:"closed", nextOpen: nextNightOpen() }); }
+    return;
+  }
   if(nightInFlight) return;
   nightInFlight = true;
   if(!nightLastOk) renderNight({ kind:"loading" }); // 첫 로드만 로딩 표시(주기적 깜빡임 방지)
