@@ -542,7 +542,7 @@ const MEXC_ENERGY = [
 // 원자재/금속 — 바이낸스에서 MEXC USDT 무기한 선물로 이전(후보 심볼 중 응답하는 것으로 매핑)
 const MEXC_METALS = [
   { base:"XAU",    display:"XAUUSDT",    mexcSymbols:["XAU_USDT","XAUT_USDT","GOLD_USDT"] },
-  { base:"XAG",    display:"XAGUSDT",    mexcSymbols:["XAG_USDT","SILVER_USDT"] },
+  { base:"XAG",    display:"XAGUSDT",    mexcSymbols:["XAG_USDT","SILVER_USDT"], tvSymbol:"MEXC:SILVERUSDT.P" },
   { base:"XPT",    display:"XPTUSDT",    mexcSymbols:["XPT_USDT","PLATINUM_USDT"] },
   { base:"XPD",    display:"XPDUSDT",    mexcSymbols:["XPD_USDT","PALLADIUM_USDT"] },
   { base:"COPPER", display:"COPPERUSDT", mexcSymbols:["COPPER_USDT","XCU_USDT","HG_USDT"] },
@@ -589,7 +589,7 @@ for(const e of MEXC_ENERGY){
   addInstrument({ id:"ME:"+e.display, ex:"MEXC", type:e.type, display:e.display, label:e.label, base:e.base, mexcSymbols:e.mexcSymbols });
 }
 for(const m of MEXC_METALS){
-  addInstrument({ id:"M:"+m.display, ex:"MEXC", type:"Commodity", display:m.display, label:m.base, subLabel: METAL_KR_LABELS[m.base] || "", base:m.base, mexcSymbols:m.mexcSymbols });
+  addInstrument({ id:"M:"+m.display, ex:"MEXC", type:"Commodity", display:m.display, label:m.base, subLabel: METAL_KR_LABELS[m.base] || "", base:m.base, mexcSymbols:m.mexcSymbols, tvSymbol:m.tvSymbol });
 }
 for(const e of MEXC_ETFS){
   addInstrument({ id:"M:"+e.display, ex:"MEXC", type:"Index", display:e.display, label:e.label, subLabel:e.subLabel, base:e.base, tvSymbol:e.tvSymbol, mexcSymbols:e.mexcSymbols });
