@@ -70,6 +70,7 @@ function nowKST() {
 const SOURCES = [
   { name: "KRX",        fn: fromKRX },
   { name: "Naver",      fn: fromNaver },
+  { name: "hangon",     fn: () => fromDashboard("https://www.hangon.co.kr/kospi-night-futures") },
   { name: "nightkospi", fn: () => fromDashboard("https://nightkospi.com/") },
   { name: "sonmul",     fn: () => fromDashboard("https://sonmul.co.kr/") },
 ];
@@ -134,17 +135,20 @@ async function fromNaver() {
 /* ③ 공개 대시보드 HTML에서 숫자 추출 (구조 바뀌면 깨질 수 있음 — ?debug=1로 보정) */
 async function fromDashboard(u) {
   const html = await (await fetch(u, { headers: { "User-Agent": UA, Referer: u } })).text();
-  // 코스피200 야간선물은 보통 250~450 사이의 'NNN.NN' 형태. 가장 먼저 보이는 걸 채택.
-  const m = html.match(/(?:코스피|kospi|야간)[^0-9]{0,40}?(\d{3}\.\d{1,2})/i) ||
-            html.match(/(\d{3}\.\d{2})/);
+  // ⚠️ 앞자리 잘림 주의: 정수부를 3자리(\d{3})로 고정하면 "1408.50"에서 "408.50"만 잡혀
+  //    맨 앞자리가 사라짐. → 정수부 1~4자리 + 천단위 콤마 허용(num()이 콤마 제거).
+  const NUM = "([\\d,]{2,7}\\.\\d{1,2})";
+  const m = html.match(new RegExp("(?:코스피\\s*200|코스피200|야간선물|kospi\\s*200|야간)[\\s\\S]{0,60}?" + NUM, "i")) ||
+            html.match(new RegExp(NUM));
   if (!m) throw new Error("dashboard: 숫자 패턴 못 찾음");
-  // 변동률이 보이면 같이 (선택)
+  // 변동률(%)이 보이면 같이 (선택)
   const pm = html.match(/([+\-]?\d{1,2}\.\d{1,2})\s*%/);
   return {
     name: "코스피200 야간선물(대시보드)",
     last: num(m[1]),
     change: NaN,
     changePct: pm ? num(pm[1]) : NaN,
-    session: "야간", time: nowKST(), raw: u,
+    session: "야간", time: nowKST(),
+    raw: { url: u, matched: m[1], pct: pm ? pm[1] : null }, // ?debug=1 진단용
   };
 }
