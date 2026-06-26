@@ -1,0 +1,7 @@
+# Cloudflare Worker 설정 — GitHub 푸시 시 자동 배포(Workers Builds)용.
+# 이 파일이 저장소에 있으면 Cloudflare가 kospi-night-worker.js를 "워커"로 배포해요.
+# (index.html / GitHub Pages 와는 무관 — 정적 사이트 배포엔 영향 없음)
+
+name = "soft-tooth-e523"          # 현재 워커 이름 = URL. 바꾸면 URL도 바뀌니 그대로 두세요.
+main = "kospi-night-worker.js"    # 배포할 워커 스크립트
+compatibility_date = "2024-09-01"

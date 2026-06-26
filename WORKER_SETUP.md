@@ -6,7 +6,29 @@
 
 ---
 
-## 1) 워커 배포 (대시보드 방식 — 가장 쉬움)
+## ⭐ GitHub 자동배포 (추천) — `wrangler.toml` 사용
+
+저장소에 `wrangler.toml` 이 있으면 **GitHub에 푸시할 때마다 워커가 자동 배포**됩니다.
+(매번 Edit code 복붙 안 해도 됨 — 워커 수정/푸시는 개발자가, 배포는 Cloudflare가 자동으로)
+
+**1회 연결만 하면 끝:**
+
+1. https://dash.cloudflare.com → **Workers & Pages** → **`soft-tooth-e523`** 워커 클릭
+2. **Settings** 탭 → **Build**(또는 "Builds"/"CI/CD") 섹션 → **Connect**(Git 연결)
+3. GitHub 인증 → 저장소 **`alibowbow/nas`** 선택 → 브랜치 **`main`**
+4. Cloudflare가 루트의 `wrangler.toml` 을 자동 인식 → 빌드 명령 기본값(또는 `npx wrangler deploy`) → **Save**
+5. 끝. 이후 `kospi-night-worker.js` 가 바뀐 채로 main에 푸시되면 **자동 배포**돼요.
+
+> - `wrangler.toml` 의 `name = "soft-tooth-e523"` 이라 **URL이 그대로 유지**됩니다(앱 수정 불필요).
+> - 기존 워커에 Git 연결 메뉴가 안 보이면: **Create application → Import a repository →
+>   `alibowbow/nas`** 로 연결해도 됩니다. name이 같아서 **같은 워커(같은 URL)** 로 배포돼요.
+> - 연결 후 혹시 URL이 바뀌면 알려주세요 — `index.html` 의 `KOSPI_NIGHT_PROXY_URL` 만 바꾸면 끝.
+
+확인: **`https://soft-tooth-e523.alibowbow.workers.dev/?debug=1`** → JSON이 갱신됐는지 보기.
+
+---
+
+## 1) 워커 배포 (수동 — 대시보드 복붙)
 
 1. https://dash.cloudflare.com → 가입/로그인 (무료)
 2. 왼쪽 **Workers & Pages** → **Create application** → **Create Worker**
