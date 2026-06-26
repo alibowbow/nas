@@ -1105,7 +1105,7 @@ function renderNight(s){
   const up = (isFinite(d.change) ? d.change : d.changePct) >= 0;
   const pts = isFinite(d.change) ? fmtPrice(Math.abs(d.change)) : null;
   const pct = isFinite(d.changePct) ? Math.abs(d.changePct).toFixed(2) + "%" : null;
-  const seg = [pts, pct ? "(" + pct + ")" : null].filter(Boolean).join(" ");
+  const seg = (pts && pct) ? `${pts} (${pct})` : (pts || pct || "");
   nightSrc.textContent = (d.source || "프록시") + (d.session ? " · " + d.session : "");
   nightGrid.innerHTML = nightCardHTML({
     price: isFinite(d.last) ? fmtPrice(d.last) : "-",
