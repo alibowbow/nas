@@ -280,6 +280,17 @@
       </div>
     </section>
 
+    <!-- 코스피200 야간선물 보드 (코스피 탭 전용 · Cloudflare Worker 프록시 경유) -->
+    <section class="kospiBoard" id="nightBoard" style="display:none">
+      <div class="kospiHead">
+        <h2>코스피200 야간선물</h2>
+        <span class="badge">KRX 야간 18:00~06:00</span>
+        <span class="src" id="nightSrc">연결 대기</span>
+      </div>
+      <div class="kGrid" id="nightGrid"></div>
+      <div class="note" id="nightNote" style="margin-top:8px"></div>
+    </section>
+
     <div class="grid" id="grid">
       <div class="hdr" id="hdr">
         <div class="hcell sortable" data-sortkey="name">종목 <span class="sortArrow" aria-hidden="true"></span></div>
@@ -329,6 +340,12 @@ const tvView = document.getElementById("tvView");
 const tvTitle = document.getElementById("tvTitle");
 const tvSubtitle = document.getElementById("tvSubtitle");
 const tvChart = document.getElementById("tvChart");
+
+/* ===== 사용자 설정 ===== */
+// 코스피200 야간선물 보드용 프록시(Cloudflare Worker) 주소. 배포 후 여기에 붙여넣으세요.
+// 비워두면 코스피 탭 보드에 '설정 안내'가 떠요. (배포법: 저장소 WORKER_SETUP.md)
+const KOSPI_NIGHT_PROXY_URL = "";   // 예: "https://kospi-night.<계정>.workers.dev"
+const KOSPI_NIGHT_POLL_MS   = 30000;
 
 function setDot(dot, state){
   dot.classList.remove("live","dead");
@@ -967,6 +984,10 @@ function updateAllKospiCards(){
 
 /* ===== Filters + Sort ===== */
 const kospiBoard  = document.getElementById("kospiBoard");
+const nightBoard  = document.getElementById("nightBoard");
+const nightGrid   = document.getElementById("nightGrid");
+const nightSrc    = document.getElementById("nightSrc");
+const nightNote   = document.getElementById("nightNote");
 const filterAll   = document.getElementById("filterAll");
 const filterKospi = document.getElementById("filterKospi");
 const filterKor   = document.getElementById("filterKor");
@@ -994,6 +1015,8 @@ function setFilter(mode){
 
   // 메모리 보드는 '전체'·'메모리' 탭에서만 노출, 그 외 카테고리 탭에선 숨김
   if(kospiBoard) kospiBoard.style.display = (mode==="ALL" || mode==="KOSPI") ? "" : "none";
+  // 코스피200 야간선물 보드는 '코스피' 탭에서만 노출
+  if(nightBoard) nightBoard.style.display = (mode==="KOR") ? "" : "none";
 
   // 주식 하위 분류 칩: '주식' 탭에서만 노출, 다른 탭으로 가면 분류를 '전체'로 초기화
   if(mode !== "Stock") setStockSub("ALL");
@@ -1034,6 +1057,95 @@ function pruneDeadMexc(){
 function resetDeadFlags(){
   for(const { row } of rows.values()) if(row.dataset.dead === "1") row.dataset.dead = "0";
 }
+
+/* ===== 코스피200 야간선물 보드 (Cloudflare Worker 프록시 경유) ===== */
+let nightTimer = null, nightInFlight = false, nightLastOk = false;
+const nightNum = (x) => {
+  if(x == null) return NaN;
+  if(typeof x === "number") return x;
+  const n = parseFloat(String(x).replace(/[, %]/g, ""));
+  return isFinite(n) ? n : NaN;
+};
+function nightCardHTML(o){
+  return `<div class="kCard index" style="cursor:default">
+    <div class="kTop">
+      <div class="kLogo" style="background:#0EA5E9">선물</div>
+      <div style="min-width:0">
+        <div class="kName">코스피200 야간선물</div>
+        <div class="kSub">${o.sub || "KRX 야간 파생"}</div>
+      </div>
+    </div>
+    <div class="kPrice">${o.price}</div>
+    <div class="kDelta ${o.deltaCls || ""}">${o.deltaText}</div>
+    <div class="kLive"><span class="dot ${o.live ? "live" : "dead"}"></span><span>${o.foot || "-"}</span></div>
+  </div>`;
+}
+function renderNight(s){
+  if(!nightGrid) return;
+  if(s.kind === "config"){
+    nightSrc.textContent = "미설정";
+    nightGrid.innerHTML = nightCardHTML({ price:"설정 필요", deltaText:"프록시 URL을 넣어주세요", sub:"Cloudflare Worker 미설정", live:false, foot:"미설정" });
+    nightNote.innerHTML = '브라우저 CORS 때문에 작은 프록시가 필요해요. 저장소의 <b>kospi-night-worker.js</b>를 Cloudflare Worker로 배포한 뒤, 그 주소를 <code>KOSPI_NIGHT_PROXY_URL</code>에 넣어주세요 (배포법: <b>WORKER_SETUP.md</b>).';
+    return;
+  }
+  if(s.kind === "loading"){
+    nightSrc.textContent = "불러오는 중…";
+    if(!nightLastOk) nightGrid.innerHTML = nightCardHTML({ price:"…", deltaText:"불러오는 중", live:false, foot:"연결 중" });
+    return;
+  }
+  if(s.kind === "error"){
+    nightSrc.textContent = "오류";
+    if(!nightLastOk) nightGrid.innerHTML = nightCardHTML({ price:"-", deltaText:"데이터 없음", live:false, foot:"실패 · 재시도 예정" });
+    nightNote.textContent = "프록시 응답을 못 받았어요(야간장 18:00~06:00이 아니거나 프록시 문제). " + (s.msg || "");
+    return;
+  }
+  // ok
+  const d = s.data;
+  const hasChg = isFinite(d.change) || isFinite(d.changePct);
+  const up = (isFinite(d.change) ? d.change : d.changePct) >= 0;
+  const pts = isFinite(d.change) ? fmtPrice(Math.abs(d.change)) : null;
+  const pct = isFinite(d.changePct) ? Math.abs(d.changePct).toFixed(2) + "%" : null;
+  const seg = [pts, pct ? "(" + pct + ")" : null].filter(Boolean).join(" ");
+  nightSrc.textContent = (d.source || "프록시") + (d.session ? " · " + d.session : "");
+  nightGrid.innerHTML = nightCardHTML({
+    price: isFinite(d.last) ? fmtPrice(d.last) : "-",
+    deltaText: hasChg ? (up ? "▲ " : "▼ ") + seg : "전일 대비 –",
+    deltaCls: hasChg ? (up ? "up" : "down") : "",
+    sub: d.name || "KRX 야간 파생",
+    live: true,
+    foot: (d.time ? d.time + " · " : "") + (d.source || "프록시")
+  });
+  nightNote.textContent = "비공식 지연 데이터(실시간 틱 아님) · 출처 " + (d.source || "-");
+}
+async function pollNight(){
+  if(!KOSPI_NIGHT_PROXY_URL){ renderNight({ kind:"config" }); return; }
+  if(nightInFlight) return;
+  nightInFlight = true;
+  if(!nightLastOk) renderNight({ kind:"loading" }); // 첫 로드만 로딩 표시(주기적 깜빡임 방지)
+  try{
+    const res = await fetch(KOSPI_NIGHT_PROXY_URL, { cache:"no-store" });
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    const j = await res.json();
+    if(j && j.ok === false) throw new Error(j.error || "프록시 실패");
+    const last = nightNum(j.last ?? j.price ?? j.close ?? j.value);
+    const change = nightNum(j.change ?? j.chg ?? j.diff);
+    const changePct = nightNum(j.changePct ?? j.changeRate ?? j.pct ?? j.rate);
+    if(!isFinite(last) && !isFinite(changePct)) throw new Error("형식 불일치");
+    nightLastOk = true;
+    renderNight({ kind:"ok", data:{ last, change, changePct, name:j.name, source:j.source || j.src, session:j.session, time:j.time || j.updated } });
+  }catch(e){
+    renderNight({ kind:"error", msg:String(e && e.message || e) });
+  }finally{
+    nightInFlight = false;
+  }
+}
+function startNight(){
+  if(!KOSPI_NIGHT_PROXY_URL){ renderNight({ kind:"config" }); return; }
+  pollNight();
+  if(nightTimer) clearInterval(nightTimer);
+  nightTimer = setInterval(pollNight, KOSPI_NIGHT_POLL_MS);
+}
+startNight();
 if(searchInput){
   searchInput.addEventListener("input", ()=>{ searchQuery = searchInput.value || ""; setFilter(currentFilterMode); });
 }
