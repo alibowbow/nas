@@ -419,7 +419,7 @@ function typeTagClass(type){
 
 /* ===== 기본정렬 그룹 정의 ===== */
 const INDEX_ORDER = ["NAS100","SP500","US30","QQQ","NIKKEI225"];
-const CRYPTO_ORDER = ["BTC","ETH","SOL","XRP","BNB","DOGE","TRX","ALL","ONDO","XLM","NEAR","WLD"];
+const CRYPTO_ORDER = ["BTC","ETH","SOL","XRP","BNB","DOGE","TRX","HYPE","ALL","ONDO","XLM","NEAR","WLD"];
 const CRYPTO_SET = new Set(CRYPTO_ORDER);
 const BIGTECH_ORDER = ["AAPL","MSFT","AMZN","NVDA","GOOGL","META","TSLA","ORCL","AMD","INTC"];
 const BIGTECH_SET = new Set(BIGTECH_ORDER);
@@ -459,7 +459,7 @@ const DEAD_DISPLAYS = new Set([
 const METAL_KR_LABELS = { XAU: "금", XAG: "은", XPT: "백금", XPD: "팔라듐", COPPER: "구리" };
 
 const BINANCE_SYMBOLS = {
-  crypto: ["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","BNBUSDT","DOGEUSDT","TRXUSDT","ALLUSDT","ONDOUSDT","XLMUSDT","NEARUSDT","WLDUSDT"],
+  crypto: ["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","BNBUSDT","DOGEUSDT","TRXUSDT","HYPEUSDT","ALLUSDT","ONDOUSDT","XLMUSDT","NEARUSDT","WLDUSDT"],
 };
 const BINANCE_SET = new Set([...BINANCE_SYMBOLS.crypto]);
 
@@ -731,7 +731,7 @@ const ASSET_NAMES = {
   XAU:"Gold", XAG:"Silver", XPT:"Platinum", XPD:"Palladium", COPPER:"Copper",
   // 크립토
   BTC:"Bitcoin", ETH:"Ethereum", SOL:"Solana", DOGE:"Dogecoin", TRX:"TRON",
-  ONDO:"Ondo", XLM:"Stellar", NEAR:"NEAR Protocol", WLD:"Worldcoin",
+  ONDO:"Ondo", XLM:"Stellar", NEAR:"NEAR Protocol", WLD:"Worldcoin", HYPE:"Hyperliquid",
 };
 
 /* ===== 2) UI rows ===== */
