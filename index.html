@@ -917,7 +917,7 @@ function updateKospiCard(id){
       setDot(c.dotEl, "LIVE");
       if(isFinite(v.pct)){
         const up = v.pct >= 0;
-        c.deltaEl.textContent = (up?"▲ ":"▼ ") + fmtPct(Math.abs(v.pct));
+        c.deltaEl.textContent = (up?"▲ ":"▼ ") + Math.abs(v.pct).toFixed(2) + "%";
         c.deltaEl.className = "kDelta " + (up?"up":"down");
       }else{
         c.deltaEl.textContent = "전일 대비 –";
@@ -962,7 +962,7 @@ function updateKospiCard(id){
       const amtKrw = (usd - dayOpen) * fx * scale;
       amt = " · " + (amtKrw >= 0 ? "+" : "−") + fmtKRW(Math.abs(amtKrw)) + "원";
     }
-    c.deltaEl.textContent = (up?"▲ ":"▼ ") + fmtPct(Math.abs(v.pct)) + amt;
+    c.deltaEl.textContent = (up?"▲ ":"▼ ") + Math.abs(v.pct).toFixed(2) + "%" + amt;
     c.deltaEl.className = "kDelta " + (up?"up":"down");
   }else{
     c.deltaEl.textContent = "전일 대비 –";
