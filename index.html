@@ -280,17 +280,25 @@
       </div>
     </section>
 
-    <!-- 코스피200 야간선물 보드 (코스피 탭 전용 · Cloudflare Worker 프록시 경유) -->
+    <!-- 삼전하닉 도미넌스 (24시간 · 야간선물과 별개 지표) -->
+    <section class="kospiBoard" id="domBoard" style="display:none">
+      <div class="kospiHead">
+        <h2>삼전하닉 도미넌스</h2>
+        <span class="badge">반도체 비중 · 24h</span>
+        <span class="src" id="domSrc">-</span>
+      </div>
+      <div class="kGrid"><div id="domCard"></div></div>
+      <div class="note" id="domNote" style="margin-top:8px"></div>
+    </section>
+
+    <!-- 코스피200 야간선물 (KRX 야간 세션 · Cloudflare Worker 프록시 경유) -->
     <section class="kospiBoard" id="nightBoard" style="display:none">
       <div class="kospiHead">
-        <h2>코스피 야간 보드</h2>
+        <h2>코스피200 야간선물</h2>
         <span class="badge">KRX 야간 18:00~06:00</span>
         <span class="src" id="nightSrc">연결 대기</span>
       </div>
-      <div class="kGrid" id="nightGrid">
-        <div id="nightFutCard"></div>
-        <div id="domCard"></div>
-      </div>
+      <div class="kGrid"><div id="nightFutCard"></div></div>
       <div class="note" id="nightNote" style="margin-top:8px"></div>
     </section>
 
@@ -348,7 +356,8 @@ const tvChart = document.getElementById("tvChart");
 // 코스피200 야간선물 보드용 프록시(Cloudflare Worker) 주소. 배포 후 여기에 붙여넣으세요.
 // 비워두면 코스피 탭 보드에 '설정 안내'가 떠요. (배포법: 저장소 WORKER_SETUP.md)
 const KOSPI_NIGHT_PROXY_URL = "https://soft-tooth-e523.alibowbow.workers.dev";   // Cloudflare Worker
-const KOSPI_NIGHT_POLL_MS   = 30000;
+const KOSPI_NIGHT_POLL_MS   = 30000;   // 야간선물 세션 중 폴링
+const KOSPI_IDLE_POLL_MS    = 90000;   // 그 외(도미넌스용 코스피 지수만 갱신 — 야간선물은 휴장 표시)
 
 function setDot(dot, state){
   dot.classList.remove("live","dead");
@@ -990,11 +999,13 @@ function updateAllKospiCards(){
 /* ===== Filters + Sort ===== */
 const kospiBoard  = document.getElementById("kospiBoard");
 const nightBoard  = document.getElementById("nightBoard");
-const nightGrid   = document.getElementById("nightGrid");
 const nightSrc    = document.getElementById("nightSrc");
 const nightNote   = document.getElementById("nightNote");
 const nightFutCard= document.getElementById("nightFutCard");
+const domBoard    = document.getElementById("domBoard");
 const domCard     = document.getElementById("domCard");
+const domSrc      = document.getElementById("domSrc");
+const domNote     = document.getElementById("domNote");
 const filterAll   = document.getElementById("filterAll");
 const filterKospi = document.getElementById("filterKospi");
 const filterKor   = document.getElementById("filterKor");
@@ -1022,7 +1033,8 @@ function setFilter(mode){
 
   // 메모리 보드는 '전체'·'메모리' 탭에서만 노출, 그 외 카테고리 탭에선 숨김
   if(kospiBoard) kospiBoard.style.display = (mode==="ALL" || mode==="KOSPI") ? "" : "none";
-  // 코스피200 야간선물 보드는 '코스피' 탭에서만 노출
+  // 삼전하닉 도미넌스(24h) + 코스피200 야간선물 보드는 '코스피' 탭에서만 노출
+  if(domBoard) domBoard.style.display = (mode==="KOR") ? "" : "none";
   if(nightBoard) nightBoard.style.display = (mode==="KOR") ? "" : "none";
 
   // 주식 하위 분류 칩: '주식' 탭에서만 노출, 다른 탭으로 가면 분류를 '전체'로 초기화
@@ -1174,6 +1186,9 @@ function renderDominance(){
   if(!domCard) return;
   const sv = lastValue.get("M:SAMSUNG"), hv = lastValue.get("M:SKHYNIX");
   const fx = usdKrwRate();
+  if(domSrc) domSrc.textContent = isFinite(nightKospi.value)
+    ? ("코스피 " + fmtPrice(nightKospi.value) + (nightKospi.source ? " · " + nightKospi.source : ""))
+    : "지수 대기";
   let key, html;
   if(!sv || !hv || !isFinite(sv.last) || !isFinite(hv.last) || !isFinite(fx)){
     key = "wait";
@@ -1200,25 +1215,19 @@ function renderDominance(){
   domCard.innerHTML = html;
 }
 
-async function pollNight(opts){
-  const force = !!(opts && opts.force);
+// 도미넌스용 코스피 지수는 24h 필요 → 워커를 항상 폴링하되, 야간선물 '표시'만 세션으로 게이트.
+async function pollNight(){
   if(!KOSPI_NIGHT_PROXY_URL){ renderNight({ kind:"config" }); renderDominance(); return; }
-  const inSession = isNightSession();
-  if(!inSession && !force){
-    // 휴장: 야간선물 폴링 중지. 단 도미넌스는 캐시 지수+라이브 삼성/하닉으로 계속 갱신.
-    if(nightView !== "closed"){ nightLastOk = false; renderNight({ kind:"closed", nextOpen: nextNightOpen() }); }
-    renderDominance();
-    return;
-  }
   if(nightInFlight) return;
   nightInFlight = true;
+  const inSession = isNightSession();
   if(inSession && !nightLastOk) renderNight({ kind:"loading" });
   try{
     const res = await fetch(KOSPI_NIGHT_PROXY_URL, { cache:"no-store" });
     if(!res.ok) throw new Error("HTTP " + res.status);
     const j = await res.json();
     const kv = nightNum(j.kospi);
-    if(isFinite(kv)) nightKospi = { value: kv, source: j.kospiSource || "" };  // 도미넌스 분모 갱신
+    if(isFinite(kv)) nightKospi = { value: kv, source: j.kospiSource || "" };  // 도미넌스 분모(24h)
     if(inSession){
       if(j.ok === false) throw new Error(j.error || "프록시 실패");
       const last = nightNum(j.last ?? j.price ?? j.close ?? j.value);
@@ -1228,8 +1237,7 @@ async function pollNight(opts){
       nightLastOk = true;
       renderNight({ kind:"ok", data:{ last, change, changePct, name:j.name, source:j.source || j.src, session:j.session, time:j.time || j.updated } });
     }else{
-      // 로드 시 force-fetch였고 휴장이면: 지수만 쓰고 야간선물 카드는 휴장 표시
-      nightLastOk = false; renderNight({ kind:"closed", nextOpen: nextNightOpen() });
+      nightLastOk = false; renderNight({ kind:"closed", nextOpen: nextNightOpen() }); // 야간선물은 휴장 표시
     }
     renderDominance();
   }catch(e){
@@ -1239,11 +1247,17 @@ async function pollNight(opts){
     nightInFlight = false;
   }
 }
+// 세션 중 30s, 그 외 90s(도미넌스 지수만 갱신). setTimeout 재귀로 동적 간격.
+function scheduleNight(){
+  if(nightTimer) clearTimeout(nightTimer);
+  const delay = isNightSession() ? KOSPI_NIGHT_POLL_MS : KOSPI_IDLE_POLL_MS;
+  nightTimer = setTimeout(async ()=>{ try{ await pollNight(); } finally { scheduleNight(); } }, delay);
+}
 function startNight(){
+  if(domNote) domNote.textContent = "삼전하닉 도미넌스 = (계수×삼성 + 계수×하닉 원화) / 코스피지수. 삼성·SK하이닉스는 24시간(MEXC), 분모 코스피지수는 워커가 갱신해요. 비공식 추정치 — 야간선물과 무관한 24h 지표예요.";
   if(!KOSPI_NIGHT_PROXY_URL){ renderNight({ kind:"config" }); renderDominance(); return; }
-  pollNight({ force:true });  // 로드 1회는 세션 무관 fetch → 코스피 지수 시드(도미넌스용)
-  if(nightTimer) clearInterval(nightTimer);
-  nightTimer = setInterval(()=> pollNight(), KOSPI_NIGHT_POLL_MS);
+  pollNight();      // 즉시 1회(지수 시드 + 도미넌스 + 야간선물)
+  scheduleNight();  // 이후 동적 간격(24h)
 }
 startNight();
 if(searchInput){
