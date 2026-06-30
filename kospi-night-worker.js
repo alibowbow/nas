@@ -30,25 +30,72 @@ export default {
   async fetch(req) {
     if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
     const debug = new URL(req.url).searchParams.get("debug") === "1";
-    const attempts = [];
 
-    for (const src of SOURCES) {
-      try {
-        const data = await src.fn();
-        const good = data && (isFinite(data.last) || isFinite(data.changePct));
-        attempts.push({ source: src.name, ok: !!good, data });
-        if (good) {
-          const out = { ok: true, source: src.name, ...data };
-          if (debug) out.attempts = attempts;
-          return json(out);
-        }
-      } catch (e) {
-        attempts.push({ source: src.name, ok: false, error: String((e && e.message) || e) });
-      }
-    }
-    return json({ ok: false, error: "all sources failed", attempts }, 502);
+    // 야간선물 + 코스피 종합지수를 병렬 수집 (지수는 삼전하닉 도미넌스 분모용)
+    const [night, kospi] = await Promise.all([getNight(), fetchKospiIndex()]);
+
+    const out = night.ok
+      ? { ok: true, source: night.source, ...night.data }
+      : { ok: false, error: "all night sources failed" };
+    out.kospi = kospi.value;          // 코스피 종합지수 (도미넌스 분모)
+    out.kospiSource = kospi.source;
+    if (debug) { out.attempts = night.attempts; out.kospiAttempts = kospi.attempts; }
+
+    return json(out, (night.ok || isFinite(kospi.value)) ? 200 : 502);
   },
 };
+
+// 야간선물: SOURCES를 위에서부터 시도, 첫 성공 반환
+async function getNight() {
+  const attempts = [];
+  for (const src of SOURCES) {
+    try {
+      const data = await src.fn();
+      const good = data && (isFinite(data.last) || isFinite(data.changePct));
+      attempts.push({ source: src.name, ok: !!good, data });
+      if (good) return { ok: true, source: src.name, data, attempts };
+    } catch (e) {
+      attempts.push({ source: src.name, ok: false, error: String((e && e.message) || e) });
+    }
+  }
+  return { ok: false, source: null, data: {}, attempts };
+}
+
+// 코스피 종합지수(지수, 도미넌스 분모) — 네이버 우선, 대시보드 폴백
+async function fetchKospiIndex() {
+  const attempts = [];
+  // ① 네이버 실시간 폴링 (nv는 보통 지수×100 → 50000 넘으면 /100 보정)
+  try {
+    const r = await fetch("https://polling.finance.naver.com/api/realtime/domestic/index/KOSPI",
+      { headers: { "User-Agent": UA, Referer: "https://finance.naver.com/sise/sise_index.naver?code=KOSPI" } });
+    const j = await r.json();
+    const d = (j && j.datas && j.datas[0]) || null;
+    let nv = num(d && (d.nv != null ? d.nv : d.cv));
+    if (isFinite(nv)) {
+      if (nv > 50000) nv = nv / 100;
+      attempts.push({ source: "naver-polling", ok: true, nv });
+      return { value: nv, source: "naver", attempts };
+    }
+    attempts.push({ source: "naver-polling", ok: false, raw: d });
+  } catch (e) { attempts.push({ source: "naver-polling", ok: false, error: String((e && e.message) || e) }); }
+  // ② 네이버 모바일 basic
+  try {
+    const r = await fetch("https://m.stock.naver.com/api/index/KOSPI/basic", { headers: { "User-Agent": UA } });
+    const j = await r.json();
+    const nv = num(j && (j.closePrice || j.nv));
+    if (isFinite(nv)) { attempts.push({ source: "naver-m", ok: true, nv }); return { value: nv, source: "naver-m", attempts }; }
+    attempts.push({ source: "naver-m", ok: false, raw: j && j.closePrice });
+  } catch (e) { attempts.push({ source: "naver-m", ok: false, error: String((e && e.message) || e) }); }
+  // ③ 대시보드(hangon)에 '코스피 지수' 표기가 있으면
+  try {
+    const html = await (await fetch("https://www.hangon.co.kr/kospi-night-futures", { headers: { "User-Agent": UA } })).text();
+    const m = html.match(/코스피\s*지수[\s\S]{0,40}?([\d,]{4,7}\.\d{1,2})/) ||
+              html.match(/KOSPI[\s\S]{0,40}?([\d,]{4,7}\.\d{1,2})/i);
+    if (m) { attempts.push({ source: "hangon", ok: true, matched: m[1] }); return { value: num(m[1]), source: "hangon", attempts }; }
+    attempts.push({ source: "hangon", ok: false });
+  } catch (e) { attempts.push({ source: "hangon", ok: false, error: String((e && e.message) || e) }); }
+  return { value: NaN, source: null, attempts };
+}
 
 /* ---------- helpers ---------- */
 function json(obj, status = 200) {
