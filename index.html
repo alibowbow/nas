@@ -160,6 +160,8 @@
     .kospiHead .badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid var(--ko-up);color:var(--ko-up);background:transparent}
     .kospiHead .src{color:var(--dim);font-size:12px;margin-left:auto}
     .kGrid{display:grid;grid-template-columns:repeat(auto-fit, minmax(214px, 1fr));gap:12px}
+    /* 도미넌스·야간선물 보드는 카드 1개라 full-width로 늘어나지 않게 폭을 캡(메모리 카드처럼 컴팩트) */
+    #domBoard .kGrid, #nightBoard .kGrid{grid-template-columns:repeat(auto-fit, minmax(240px, 340px));justify-content:start}
     @media (max-width:560px){.kGrid{grid-template-columns:1fr 1fr}}
     @media (max-width:380px){.kGrid{grid-template-columns:1fr}}
     .kCard{position:relative;border:1px solid var(--line);border-radius:var(--radius);padding:16px 16px 14px;background:var(--surface);box-shadow:var(--shadow-sm);cursor:pointer;transition:transform .12s ease, box-shadow .15s ease, border-color .15s ease}
@@ -309,11 +311,6 @@
         <div class="hcell sortable muted" data-sortkey="vol" style="justify-self:end;">Vol(24h) <span class="sortArrow" aria-hidden="true"></span></div>
         <div class="hcell sortable muted" data-sortkey="chg" style="justify-self:end;">Change(일봉) <span class="sortArrow" aria-hidden="true"></span></div>
       </div>
-    </div>
-
-    <div class="note">
-      MEXC 주식 선물은 WS 구독용 심볼이 <span class="muted">AAPLSTOCK_USDT</span> 같은 형태인 경우가 많아(워밍업 후 자동 매핑).<br/>
-      Change(일봉)은 MEXC의 Day1 캔들 시가 기준으로 계산됨(시가 수신 전엔 '-' 표시).
     </div>
   </div>
 
@@ -1128,13 +1125,13 @@ function renderNight(s){
   if(s.kind === "closed"){
     nightSrc.textContent = "휴장";
     nightFutCard.innerHTML = nightCardHTML({ price:"휴장", deltaText:"야간장 시간 아님", sub:"평일 18:00~06:00 KST", live:false, foot:"다음 개장 " + (s.nextOpen || "평일 18:00") });
-    nightNote.textContent = "코스피200 야간선물은 평일 18:00~익일 06:00(KST)에만 거래돼요. 지금은 휴장이라 데이터 수신을 멈췄어요. 다음 개장: " + (s.nextOpen || "평일 18:00") + ".";
+    nightNote.textContent = "코스피200 야간선물은 평일 18:00~익일 06:00(KST)에만 거래돼요. 지금은 휴장이에요. 다음 개장: " + (s.nextOpen || "평일 18:00") + ".";
     return;
   }
   if(s.kind === "config"){
-    nightSrc.textContent = "미설정";
-    nightFutCard.innerHTML = nightCardHTML({ price:"설정 필요", deltaText:"프록시 URL을 넣어주세요", sub:"Cloudflare Worker 미설정", live:false, foot:"미설정" });
-    nightNote.innerHTML = '브라우저 CORS 때문에 작은 프록시가 필요해요. 저장소의 <b>kospi-night-worker.js</b>를 Cloudflare Worker로 배포한 뒤, 그 주소를 <code>KOSPI_NIGHT_PROXY_URL</code>에 넣어주세요 (배포법: <b>WORKER_SETUP.md</b>).';
+    nightSrc.textContent = "준비 중";
+    nightFutCard.innerHTML = nightCardHTML({ price:"준비 중", deltaText:"", sub:"야간선물", live:false, foot:"연결 대기" });
+    nightNote.textContent = "야간선물 데이터를 준비 중이에요.";
     return;
   }
   if(s.kind === "loading"){
@@ -1145,7 +1142,7 @@ function renderNight(s){
   if(s.kind === "error"){
     nightSrc.textContent = "오류";
     if(!nightLastOk) nightFutCard.innerHTML = nightCardHTML({ price:"-", deltaText:"데이터 없음", live:false, foot:"실패 · 재시도 예정" });
-    nightNote.textContent = "프록시 응답을 못 받았어요(야간장 18:00~06:00이 아니거나 프록시 문제). " + (s.msg || "");
+    nightNote.textContent = "야간선물 데이터를 불러오지 못했어요. 잠시 후 다시 시도해요.";
     return;
   }
   // ok
@@ -1155,7 +1152,7 @@ function renderNight(s){
   const pts = isFinite(d.change) ? fmtPrice(Math.abs(d.change)) : null;
   const pct = isFinite(d.changePct) ? Math.abs(d.changePct).toFixed(2) + "%" : null;
   const seg = (pts && pct) ? `${pts} (${pct})` : (pts || pct || "");
-  nightSrc.textContent = (d.source || "프록시") + (d.session ? " · " + d.session : "");
+  nightSrc.textContent = (d.source || "라이브") + (d.session ? " · " + d.session : "");
   nightFutCard.innerHTML = nightCardHTML({
     price: isFinite(d.last) ? fmtPrice(d.last) : "-",
     deltaText: hasChg ? (up ? "▲ " : "▼ ") + seg : "전일 대비 –",
@@ -1254,7 +1251,7 @@ function scheduleNight(){
   nightTimer = setTimeout(async ()=>{ try{ await pollNight(); } finally { scheduleNight(); } }, delay);
 }
 function startNight(){
-  if(domNote) domNote.textContent = "삼전하닉 도미넌스 = (계수×삼성 + 계수×하닉 원화) / 코스피지수. 삼성·SK하이닉스는 24시간(MEXC), 분모 코스피지수는 워커가 갱신해요. 비공식 추정치 — 야간선물과 무관한 24h 지표예요.";
+  if(domNote) domNote.textContent = "삼성전자 보통주와 SK하이닉스가 코스피 전체 시가총액에서 차지하는 비중(추정)이에요. 삼성전자우선주(005935)는 포함하지 않아요. 비공식 참고용 · 투자권유 아님.";
   if(!KOSPI_NIGHT_PROXY_URL){ renderNight({ kind:"config" }); renderDominance(); return; }
   pollNight();      // 즉시 1회(지수 시드 + 도미넌스 + 야간선물)
   scheduleNight();  // 이후 동적 간격(24h)
