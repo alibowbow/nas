@@ -94,30 +94,45 @@ async function fetchKospiIndex() {
 }
 
 // 코스피 지수 소스 후보(위에서부터 시도, 하나 막혀도 다음으로 폴백)
-// 다음(국내 실시간) 시도 → 야후(~15분 지연)는 폴백. (네이버·구글은 클플에서 차단 확인돼 제외)
+// 중소·개인 대시보드(국내 실시간, 클플 차단 없음) 우선 → 다음/야후는 폴백.
+// DASHBOARD_URLS에 '실시간 코스피 종합지수'를 보여주는 사이트를 추가하면 됨.
+const DASHBOARD_KOSPI_URLS = [
+  "https://www.hangon.co.kr/kospi",
+  "https://www.hangon.co.kr/kospi-night-futures",
+  "https://sonmul.co.kr/",
+  "https://nightkospi.com/",
+];
 const KOSPI_SOURCES = [
-  // ① 다음 금융 (국내 실시간) — referer/x-requested-with 헤더 필요
+  // ① 중소·개인 대시보드 스크래핑 (국내 실시간). '코스피' 근처 숫자를 종합지수 범위로 골라냄.
+  { name: "dashboard", fn: async () => {
+      for (const u of DASHBOARD_KOSPI_URLS) {
+        try {
+          const html = await (await fetch(u, { headers: { "User-Agent": UA, Referer: u } })).text();
+          // '코스피'(200 아님) 근처 NNNN.NN → 범위(1500~25000)면 종합지수로 채택
+          const re = /(?:코스피|KOSPI)(?!\s*200)[\s\S]{0,90}?([\d,]{4,7}\.\d{1,2})/ig;
+          let m;
+          while ((m = re.exec(html)) !== null) {
+            const v = num(m[1]);
+            if (v > 1500 && v < 25000) return v;
+          }
+        } catch (_) { /* 다음 URL로 */ }
+      }
+      return NaN;
+    } },
+  // ② 다음 금융 (국내 실시간) — referer/x-requested-with 헤더 필요
   { name: "daum", fn: async () => {
       const r = await fetch("https://finance.daum.net/api/quotes/KOSPI?summary=false&changeStatistics=true",
         { headers: { "User-Agent": UA, "Referer": "https://finance.daum.net/domestic/kospi", "x-requested-with": "XMLHttpRequest" } });
       const j = await r.json();
       return num(j && (j.tradePrice != null ? j.tradePrice : (j.basePrice != null ? j.basePrice : j.currentPrice)));
     } },
-  // ② 야후 파이낸스 ^KS11 — 안정적이지만 ~15분 지연. 야간엔 종가 고정이라 무방.
+  // ③ 야후 파이낸스 ^KS11 — 안정적이지만 ~15분 지연(최후 폴백). 야간엔 종가 고정이라 무방.
   { name: "yahoo", fn: async () => {
       const r = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/%5EKS11?range=1d&interval=1d",
         { headers: { "User-Agent": UA } });
       const j = await r.json();
       const meta = j && j.chart && j.chart.result && j.chart.result[0] && j.chart.result[0].meta;
       return num(meta && (meta.regularMarketPrice != null ? meta.regularMarketPrice : meta.previousClose));
-    } },
-  // ③ 대시보드(hangon) — 코스피 종합지수 표기(있으면, 최후 폴백)
-  { name: "hangon", fn: async () => {
-      const html = await (await fetch("https://www.hangon.co.kr/kospi-night-futures",
-        { headers: { "User-Agent": UA } })).text();
-      const m = html.match(/코스피\s*지수[\s\S]{0,60}?([\d,]{4,7}\.\d{1,2})/) ||
-                html.match(/KOSPI(?!\s*200)[\s\S]{0,60}?([\d,]{4,7}\.\d{1,2})/i);
-      return m ? num(m[1]) : NaN;
     } },
 ];
 
