@@ -32,12 +32,16 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
     const debug = new URL(req.url).searchParams.get("debug") === "1";
 
-    // 야간선물 + 코스피 종합지수를 병렬 수집 (지수는 삼전하닉 도미넌스 분모용)
-    const [night, kospi] = await Promise.all([getNight(), fetchKospiIndex()]);
+    // 야간선물 스크래핑은 '야간 세션'에만 (휴장엔 대시보드에 부담 X). 지수는 24h(도미넌스용).
+    const inSession = isNightSessionKST();
+    const [night, kospi] = await Promise.all([
+      inSession ? getNight() : Promise.resolve({ ok: false, source: null, data: { closed: true }, attempts: [] }),
+      fetchKospiIndex(),
+    ]);
 
     const out = night.ok
       ? { ok: true, source: night.source, ...night.data }
-      : { ok: false, error: "all night sources failed" };
+      : { ok: false, error: inSession ? "all night sources failed" : "closed" };
     out.kospi = kospi.value;          // 코스피 종합지수 (도미넌스 분모)
     out.kospiSource = kospi.source;
     if (debug) { out.attempts = night.attempts; out.kospiAttempts = kospi.attempts; }
@@ -45,6 +49,17 @@ export default {
     return json(out, (night.ok || isFinite(kospi.value)) ? 200 : 502);
   },
 };
+
+// 야간 세션(KST): 평일 18:00~익일 06:00. 그 외엔 야간선물 스크래핑 생략.
+function isNightSessionKST() {
+  const p = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", hour: "2-digit", weekday: "short", hour12: false })
+    .formatToParts(new Date()).reduce((a, x) => (a[x.type] = x.value, a), {});
+  let h = parseInt(p.hour, 10); if (h === 24) h = 0;
+  const dow = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[p.weekday];
+  if (h >= 18) return dow >= 1 && dow <= 5;   // 18:00~23:59 월~금
+  if (h < 6)   return dow >= 2 && dow <= 6;    // 00:00~05:59 화~토(전날 세션 연장)
+  return false;
+}
 
 // 야간선물: SOURCES를 위에서부터 시도, 첫 성공 반환
 async function getNight() {
