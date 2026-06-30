@@ -44,7 +44,7 @@ export default {
       : { ok: false, error: inSession ? "all night sources failed" : "closed" };
     out.kospi = kospi.value;          // 코스피 종합지수 (도미넌스 분모)
     out.kospiSource = kospi.source;
-    if (debug) { out.attempts = night.attempts; out.kospiAttempts = kospi.attempts; }
+    if (debug) { out.attempts = night.attempts; out.kospiAttempts = kospi.attempts; out.dashboardDebug = _dashDbg; }
 
     return json(out, (night.ok || isFinite(kospi.value)) ? 200 : 502);
   },
@@ -103,20 +103,34 @@ const DASHBOARD_KOSPI_URLS = [
   "https://sonmul.co.kr/",
   "https://nightkospi.com/",
 ];
+let _dashDbg = [];   // ?debug=1 진단용: 대시보드 URL별 결과
 const KOSPI_SOURCES = [
   // ① 중소·개인 대시보드 스크래핑 (국내 실시간). '코스피' 근처 숫자를 종합지수 범위로 골라냄.
   { name: "dashboard", fn: async () => {
+      _dashDbg = [];
       for (const u of DASHBOARD_KOSPI_URLS) {
+        const info = { url: u };
         try {
-          const html = await (await fetch(u, { headers: { "User-Agent": UA, Referer: u } })).text();
+          const res = await fetch(u, { headers: { "User-Agent": UA, Referer: u } });
+          info.status = res.status;
+          const html = await res.text();
+          info.len = html.length;
+          info.hasKospi = /코스피|KOSPI/i.test(html);
           // '코스피'(200 아님) 근처 NNNN.NN → 범위(1500~25000)면 종합지수로 채택
           const re = /(?:코스피|KOSPI)(?!\s*200)[\s\S]{0,160}?([\d,]{4,7}\.\d{1,2})/ig;
-          let m;
+          let m, found = null;
           while ((m = re.exec(html)) !== null) {
+            if (!info.firstMatch) info.firstMatch = m[1];
             const v = num(m[1]);
-            if (v > 1500 && v < 25000) return v;
+            if (v > 1500 && v < 25000) { found = v; break; }
           }
-        } catch (_) { /* 다음 URL로 */ }
+          info.found = found;
+          _dashDbg.push(info);
+          if (found != null) return found;
+        } catch (e) {
+          info.error = String((e && e.message) || e);
+          _dashDbg.push(info);
+        }
       }
       return NaN;
     } },
