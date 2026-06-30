@@ -94,34 +94,16 @@ async function fetchKospiIndex() {
 }
 
 // 코스피 지수 소스 후보(위에서부터 시도, 하나 막혀도 다음으로 폴백)
-// 국내 실시간(네이버) 우선 → 야후는 ~15분 지연이라 폴백으로.
+// 다음(국내 실시간) 시도 → 야후(~15분 지연)는 폴백. (네이버·구글은 클플에서 차단 확인돼 제외)
 const KOSPI_SOURCES = [
-  // ① 네이버 실시간 폴링 (국내 실시간, result.areas[0].datas[0].nv, ×100 보정)
-  { name: "naver-polling", fn: async () => {
-      const r = await fetch("https://polling.finance.naver.com/api/realtime/domestic/index/KOSPI",
-        { headers: { "User-Agent": UA, Referer: "https://finance.naver.com/sise/sise_index.naver?code=KOSPI" } });
+  // ① 다음 금융 (국내 실시간) — referer/x-requested-with 헤더 필요
+  { name: "daum", fn: async () => {
+      const r = await fetch("https://finance.daum.net/api/quotes/KOSPI?summary=false&changeStatistics=true",
+        { headers: { "User-Agent": UA, "Referer": "https://finance.daum.net/domestic/kospi", "x-requested-with": "XMLHttpRequest" } });
       const j = await r.json();
-      const datas = (j && j.result && j.result.areas && j.result.areas[0] && j.result.areas[0].datas) || (j && j.datas) || [];
-      const d = datas.find(x => x && (x.cd === "KOSPI" || x.nm === "코스피")) || datas[0];
-      let nv = num(d && (d.nv != null ? d.nv : d.cv));
-      if (isFinite(nv) && nv > 50000) nv = nv / 100;
-      return nv;
+      return num(j && (j.tradePrice != null ? j.tradePrice : (j.basePrice != null ? j.basePrice : j.currentPrice)));
     } },
-  // ② 네이버 모바일 basic (국내 실시간)
-  { name: "naver-m", fn: async () => {
-      const r = await fetch("https://m.stock.naver.com/api/index/KOSPI/basic",
-        { headers: { "User-Agent": UA, Referer: "https://m.stock.naver.com/" } });
-      const j = await r.json();
-      return num(j && (j.closePrice != null ? j.closePrice : (j.nv != null ? j.nv : j.now)));
-    } },
-  // ③ 구글 파이낸스 — data-last-price 속성
-  { name: "google", fn: async () => {
-      const html = await (await fetch("https://www.google.com/finance/quote/KOSPI:KRX",
-        { headers: { "User-Agent": UA } })).text();
-      const m = html.match(/data-last-price="([\d.]+)"/);
-      return m ? num(m[1]) : NaN;
-    } },
-  // ④ 야후 파이낸스 ^KS11 — 안정적이지만 ~15분 지연(폴백)
+  // ② 야후 파이낸스 ^KS11 — 안정적이지만 ~15분 지연. 야간엔 종가 고정이라 무방.
   { name: "yahoo", fn: async () => {
       const r = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/%5EKS11?range=1d&interval=1d",
         { headers: { "User-Agent": UA } });
@@ -129,7 +111,7 @@ const KOSPI_SOURCES = [
       const meta = j && j.chart && j.chart.result && j.chart.result[0] && j.chart.result[0].meta;
       return num(meta && (meta.regularMarketPrice != null ? meta.regularMarketPrice : meta.previousClose));
     } },
-  // ⑤ 대시보드(hangon) — 코스피 종합지수 표기(있으면)
+  // ③ 대시보드(hangon) — 코스피 종합지수 표기(있으면, 최후 폴백)
   { name: "hangon", fn: async () => {
       const html = await (await fetch("https://www.hangon.co.kr/kospi-night-futures",
         { headers: { "User-Agent": UA } })).text();
