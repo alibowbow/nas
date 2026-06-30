@@ -97,6 +97,7 @@ async function fetchKospiIndex() {
 // 중소·개인 대시보드(국내 실시간, 클플 차단 없음) 우선 → 다음/야후는 폴백.
 // DASHBOARD_URLS에 '실시간 코스피 종합지수'를 보여주는 사이트를 추가하면 됨.
 const DASHBOARD_KOSPI_URLS = [
+  "https://apt2.me/global_index.jsp",   // 글로벌 지수 묶음(코스피 종합지수 포함 가능)
   "https://www.hangon.co.kr/kospi",
   "https://www.hangon.co.kr/kospi-night-futures",
   "https://sonmul.co.kr/",
@@ -109,7 +110,7 @@ const KOSPI_SOURCES = [
         try {
           const html = await (await fetch(u, { headers: { "User-Agent": UA, Referer: u } })).text();
           // '코스피'(200 아님) 근처 NNNN.NN → 범위(1500~25000)면 종합지수로 채택
-          const re = /(?:코스피|KOSPI)(?!\s*200)[\s\S]{0,90}?([\d,]{4,7}\.\d{1,2})/ig;
+          const re = /(?:코스피|KOSPI)(?!\s*200)[\s\S]{0,160}?([\d,]{4,7}\.\d{1,2})/ig;
           let m;
           while ((m = re.exec(html)) !== null) {
             const v = num(m[1]);
