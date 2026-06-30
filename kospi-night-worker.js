@@ -64,33 +64,35 @@ async function getNight() {
 // 코스피 종합지수(지수, 도미넌스 분모) — 네이버 우선, 대시보드 폴백
 async function fetchKospiIndex() {
   const attempts = [];
-  // ① 네이버 실시간 폴링 (nv는 보통 지수×100 → 50000 넘으면 /100 보정)
+  // ① 네이버 모바일 basic (closePrice = 실제 지수값 문자열, 가장 단순)
+  try {
+    const r = await fetch("https://m.stock.naver.com/api/index/KOSPI/basic",
+      { headers: { "User-Agent": UA, Referer: "https://m.stock.naver.com/" } });
+    const j = await r.json();
+    const nv = num(j && (j.closePrice != null ? j.closePrice : (j.nv != null ? j.nv : (j.now != null ? j.now : j.currentPrice))));
+    if (isFinite(nv)) { attempts.push({ source: "naver-m", ok: true, nv }); return { value: nv, source: "naver", attempts }; }
+    attempts.push({ source: "naver-m", ok: false, raw: j });
+  } catch (e) { attempts.push({ source: "naver-m", ok: false, error: String((e && e.message) || e) }); }
+  // ② 네이버 실시간 폴링 (구조: result.areas[0].datas[0].nv — nv는 지수×100 → /100 보정)
   try {
     const r = await fetch("https://polling.finance.naver.com/api/realtime/domestic/index/KOSPI",
       { headers: { "User-Agent": UA, Referer: "https://finance.naver.com/sise/sise_index.naver?code=KOSPI" } });
     const j = await r.json();
-    const d = (j && j.datas && j.datas[0]) || null;
+    const datas = (j && j.result && j.result.areas && j.result.areas[0] && j.result.areas[0].datas) || (j && j.datas) || [];
+    const d = datas.find(x => x && (x.cd === "KOSPI" || x.nm === "코스피")) || datas[0] || null;
     let nv = num(d && (d.nv != null ? d.nv : d.cv));
     if (isFinite(nv)) {
       if (nv > 50000) nv = nv / 100;
       attempts.push({ source: "naver-polling", ok: true, nv });
       return { value: nv, source: "naver", attempts };
     }
-    attempts.push({ source: "naver-polling", ok: false, raw: d });
+    attempts.push({ source: "naver-polling", ok: false, raw: d || (j && j.result) || j });
   } catch (e) { attempts.push({ source: "naver-polling", ok: false, error: String((e && e.message) || e) }); }
-  // ② 네이버 모바일 basic
-  try {
-    const r = await fetch("https://m.stock.naver.com/api/index/KOSPI/basic", { headers: { "User-Agent": UA } });
-    const j = await r.json();
-    const nv = num(j && (j.closePrice || j.nv));
-    if (isFinite(nv)) { attempts.push({ source: "naver-m", ok: true, nv }); return { value: nv, source: "naver-m", attempts }; }
-    attempts.push({ source: "naver-m", ok: false, raw: j && j.closePrice });
-  } catch (e) { attempts.push({ source: "naver-m", ok: false, error: String((e && e.message) || e) }); }
-  // ③ 대시보드(hangon)에 '코스피 지수' 표기가 있으면
+  // ③ 대시보드(hangon)에 '코스피 지수'(종합) 표기가 있으면 — KOSPI 200(야간선물)과 혼동 방지
   try {
     const html = await (await fetch("https://www.hangon.co.kr/kospi-night-futures", { headers: { "User-Agent": UA } })).text();
-    const m = html.match(/코스피\s*지수[\s\S]{0,40}?([\d,]{4,7}\.\d{1,2})/) ||
-              html.match(/KOSPI[\s\S]{0,40}?([\d,]{4,7}\.\d{1,2})/i);
+    const m = html.match(/코스피\s*지수[\s\S]{0,60}?([\d,]{4,7}\.\d{1,2})/) ||
+              html.match(/KOSPI(?!\s*200)[\s\S]{0,60}?([\d,]{4,7}\.\d{1,2})/i);
     if (m) { attempts.push({ source: "hangon", ok: true, matched: m[1] }); return { value: num(m[1]), source: "hangon", attempts }; }
     attempts.push({ source: "hangon", ok: false });
   } catch (e) { attempts.push({ source: "hangon", ok: false, error: String((e && e.message) || e) }); }
