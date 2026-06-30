@@ -1094,6 +1094,11 @@ function isNightSession(){
   if(h < 6)   return dow >= 2 && dow <= 6;    // 00:00~05:59 : 화~토(전날 평일 세션 연장)
   return false;                               // 06:00~17:59 : 휴장
 }
+// 코스피 종합지수가 갱신되는 시간(평일 09:00~16:00). 그 외엔 마감값 고정 → 새로 안 가져옴.
+function isKospiLive(){
+  const { h, dow } = nowKSTParts();
+  return dow >= 1 && dow <= 5 && h >= 9 && h < 16;
+}
 function nextNightOpen(){
   const { h, dow } = nowKSTParts();
   if(dow >= 1 && dow <= 5 && h < 18) return "오늘 18:00";  // 평일 낮(또는 월 새벽 휴장)
@@ -1220,7 +1225,10 @@ async function pollNight(){
   const inSession = isNightSession();
   if(inSession && !nightLastOk) renderNight({ kind:"loading" });
   try{
-    const res = await fetch(KOSPI_NIGHT_PROXY_URL, { cache:"no-store" });
+    // 코스피 지수는 장중(09~16시)이거나 아직 캐시 전일 때만 요청. 장 마감 후엔 마감값 유지(?kospi=0).
+    const wantKospi = isKospiLive() || !isFinite(nightKospi.value);
+    const url = KOSPI_NIGHT_PROXY_URL + (KOSPI_NIGHT_PROXY_URL.includes("?") ? "&" : "?") + "kospi=" + (wantKospi ? "1" : "0");
+    const res = await fetch(url, { cache:"no-store" });
     if(!res.ok) throw new Error("HTTP " + res.status);
     const j = await res.json();
     const kv = nightNum(j.kospi);

@@ -30,13 +30,15 @@ const UA =
 export default {
   async fetch(req) {
     if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
-    const debug = new URL(req.url).searchParams.get("debug") === "1";
+    const url = new URL(req.url);
+    const debug = url.searchParams.get("debug") === "1";
+    const wantKospi = url.searchParams.get("kospi") !== "0";  // ?kospi=0이면 지수 조회 생략(장 마감 후)
 
-    // 야간선물 스크래핑은 '야간 세션'에만 (휴장엔 대시보드에 부담 X). 지수는 24h(도미넌스용).
+    // 야간선물 스크래핑은 '야간 세션'에만 (휴장엔 대시보드에 부담 X). 지수는 장중에만 새로 가져옴.
     const inSession = isNightSessionKST();
     const [night, kospi] = await Promise.all([
       inSession ? getNight() : Promise.resolve({ ok: false, source: null, data: { closed: true }, attempts: [] }),
-      fetchKospiIndex(),
+      wantKospi ? fetchKospiIndex() : Promise.resolve({ value: NaN, source: null, attempts: [] }),
     ]);
 
     const out = night.ok
