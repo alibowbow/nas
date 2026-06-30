@@ -1,6 +1,7 @@
 /* =====================================================================
- * kospi-night-worker.js — Cloudflare Worker
- * 코스피200 야간선물 값을 "브라우저에서" 쓸 수 있게 CORS를 붙여 JSON으로 내보냅니다.
+ * kospi-night-worker.js — Cloudflare Worker  (rev: kospi-index multi-source)
+ * 코스피200 야간선물 + 코스피 종합지수(도미넌스용)를 "브라우저에서" 쓸 수 있게
+ * CORS를 붙여 JSON으로 내보냅니다.
  *
  * 왜 필요한가:
  *   index.html은 정적(브라우저) 앱이라 data.krx.co.kr·네이버를 직접 fetch하면
