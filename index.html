@@ -499,8 +499,8 @@ const MEXC_DISPLAY = [
   "SHOPUSDT","SMCIUSDT","SPOTUSDT","SP500USDT","TSLAUSDT","UBERUSDT","UNHUSDT","US30USDT",
   "VZUSDT","WMTUSDT","XOMUSDT",
   // ── 추가 종목(2026) ──
-  "TSMUSDT","ONUSDT","TXNUSDT","ADIUSDT","MCHPUSDT","KLACUSDT","TERUSDT","ALABUSDT",
-  "GLWUSDT","LITEUSDT","NOKUSDT","COHRUSDT","CIENUSDT","ANETUSDT","JNPRUSDT",
+  "TSMUSDT","ONUSDT","TXNUSDT","ADIUSDT","MCHPUSDT","KLACUSDT","TERUSDT","ALABUSDT","NVTSUSDT",
+  "GLWUSDT","LITEUSDT","NOKUSDT","COHRUSDT","CIENUSDT","ANETUSDT","JNPRUSDT","POETUSDT",
   "SONYUSDT","DISUSDT","EAUSDT","RBLXUSDT",
   "NOWUSDT","SNOWUSDT","DDOGUSDT","NETUSDT","ZSUSDT","ZMUSDT","UUSDT","MDBUSDT","TEAMUSDT","WDAYUSDT",
   "MARAUSDT","RIOTUSDT","CLSKUSDT","XYZUSDT","GLXYUSDT","BMNRUSDT",
@@ -693,8 +693,8 @@ addInstrument({
 const STOCK_GROUPS = [
   { key:"memory",     label:"메모리",        bases:["SAMSUNG","SKHYNIX","MU","SNDK","WDC","STX"] },
   { key:"logic",      label:"CPU·GPU",      bases:["AMD","INTC","ARM","QCOM","AVGO","TSM","ON","TXN","ADI","MCHP"] },
-  { key:"semieq",     label:"반도체장비",     bases:["ASML","AMAT","LRCX","KLAC","TER","SMCI"] },
-  { key:"optical",    label:"광통신·네트워크", bases:["GLW","LITE","NOK","COHR","CIEN","ANET","JNPR","CSCO","MRVL","ALAB"] },
+  { key:"semieq",     label:"반도체",       bases:["ASML","AMAT","LRCX","KLAC","TER","SMCI","NVTS"] },
+  { key:"optical",    label:"광통신·네트워크", bases:["GLW","LITE","NOK","COHR","CIEN","ANET","JNPR","CSCO","MRVL","ALAB","POET"] },
   { key:"quantum",    label:"양자",          bases:["IONQ","QBTS","RGTI","INFQ","IBM"] },
   { key:"space",      label:"우주",          bases:["RDW","LUNR","ASTS"] },
   { key:"bigtech",    label:"빅테크",        bases:["AAPL","MSFT","GOOGL","AMZN","META","NVDA","TSLA"] },
@@ -719,13 +719,13 @@ const ASSET_NAMES = {
   NVDA:"NVIDIA", TSLA:"Tesla", AVGO:"Broadcom", AMD:"AMD", INTC:"Intel", QCOM:"Qualcomm",
   ARM:"Arm Holdings", TSM:"TSMC", ASML:"ASML", AMAT:"Applied Materials", LRCX:"Lam Research",
   KLAC:"KLA", TER:"Teradyne", MRVL:"Marvell", ADI:"Analog Devices", TXN:"Texas Instruments",
-  MCHP:"Microchip", ON:"onsemi", SMCI:"Super Micro", ALAB:"Astera Labs", MU:"Micron",
+  MCHP:"Microchip", ON:"onsemi", SMCI:"Super Micro", ALAB:"Astera Labs", NVTS:"Navitas Semiconductor", MU:"Micron",
   SNDK:"SanDisk", WDC:"Western Digital", STX:"Seagate", SAMSUNG:"Samsung Electronics", SKHYNIX:"SK hynix",
   // 양자·우주
   IONQ:"IonQ", QBTS:"D-Wave Quantum", RGTI:"Rigetti Computing", INFQ:"Infleqtion", RDW:"Redwire", LUNR:"Intuitive Machines", ASTS:"AST SpaceMobile",
   // 광통신·네트워크
   GLW:"Corning", LITE:"Lumentum", NOK:"Nokia", COHR:"Coherent", CIEN:"Ciena",
-  ANET:"Arista Networks", JNPR:"Juniper Networks", CSCO:"Cisco",
+  ANET:"Arista Networks", JNPR:"Juniper Networks", CSCO:"Cisco", POET:"POET Technologies",
   // SW·SaaS
   ORCL:"Oracle", CRM:"Salesforce", ADBE:"Adobe", INTU:"Intuit", NOW:"ServiceNow",
   SNOW:"Snowflake", DDOG:"Datadog", NET:"Cloudflare", ZS:"Zscaler", CRWD:"CrowdStrike",
