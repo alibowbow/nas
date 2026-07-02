@@ -214,8 +214,13 @@
     }
     /* 차트 화면: 전체화면 고정 오버레이 + 페이지 스크롤 잠금 (모바일에서 주소창 토글/스크롤 방지) */
     body.tv-open{overflow:hidden;overscroll-behavior:none;}
-    body.tv-open #tvView{position:fixed;inset:0;z-index:1000;margin:0;height:100vh;height:100dvh;background:var(--bg);overscroll-behavior:none;}
-    body.tv-open #tvBox{margin:0;height:100%;border:0;border-radius:0;box-shadow:none;display:flex;flex-direction:column;}
+    /* #tvView를 세로 플렉스로 → 상단 배너와 차트박스가 100dvh를 '나눠' 가짐(예전엔 배너 높이만큼 넘쳐 아래가 잘림) */
+    body.tv-open #tvView{position:fixed;inset:0;z-index:1000;margin:0;height:100vh;height:100dvh;background:var(--bg);overscroll-behavior:none;display:flex;flex-direction:column;}
+    /* 전체화면에선 상단 배너를 얇은 '뒤로' 바로 축소 → 차트에 세로 공간 최대 확보 */
+    body.tv-open .top{flex:0 0 auto;margin:0;padding:8px 14px;border:0;border-radius:0;box-shadow:none;background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;border-bottom:1px solid var(--line);}
+    body.tv-open .top .sub{display:none;}
+    body.tv-open .title h1{font-size:15px;font-weight:800;}
+    body.tv-open #tvBox{flex:1 1 auto;min-height:0;margin:0;border:0;border-radius:0;box-shadow:none;display:flex;flex-direction:column;}
     body.tv-open #tvChart{flex:1 1 auto;height:auto;min-height:0;}
   </style>
 </head>
