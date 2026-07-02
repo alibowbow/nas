@@ -207,6 +207,11 @@
       .chg{justify-self:end}.vol{justify-self:end}
       #tvChart{height:70vh;min-height:480px}
     }
+    /* 차트 화면: 전체화면 고정 오버레이 + 페이지 스크롤 잠금 (모바일에서 주소창 토글/스크롤 방지) */
+    body.tv-open{overflow:hidden;overscroll-behavior:none;}
+    body.tv-open #tvView{position:fixed;inset:0;z-index:1000;margin:0;height:100vh;height:100dvh;background:var(--bg);overscroll-behavior:none;}
+    body.tv-open #tvBox{margin:0;height:100%;border:0;border-radius:0;box-shadow:none;display:flex;flex-direction:column;}
+    body.tv-open #tvChart{flex:1 1 auto;height:auto;min-height:0;}
   </style>
 </head>
 <body>
@@ -1937,6 +1942,7 @@ async function openTradingView(it){
 
   listView.style.display = "none";
   tvView.style.display = "block";
+  document.body.classList.add("tv-open");   // 차트 화면: 페이지 스크롤 잠금(모바일 주소창 안정)
   tvTitle.textContent = `${it.krLabel || it.display}`;
   tvSubtitle.textContent = `${it.ex} · ${symbol}`;
 
@@ -1983,6 +1989,7 @@ async function openTradingView(it){
 function goBack(){
   tvView.style.display = "none";
   listView.style.display = "block";
+  document.body.classList.remove("tv-open");
 }
 // 인앱 '뒤로'/ESC는 history.back()을 호출 → popstate에서 goBack 실행(휴대폰 뒤로가기와 동일 동작)
 document.getElementById("backBtn").onclick = ()=>{
