@@ -78,8 +78,8 @@
     .title{display:flex;flex-direction:column;gap:5px}
     #listView .title{padding-right:52px}
     #themeBtn{position:absolute;top:14px;right:16px;z-index:3}
-    .title h1{margin:0;font-size:21px;font-weight:850;letter-spacing:-.02em;width:fit-content;
-      background:linear-gradient(96deg, var(--brand), var(--t-crypto) 72%);
+    .title h1{margin:0;font-size:22px;font-weight:850;letter-spacing:-.02em;width:fit-content;
+      background:linear-gradient(100deg, var(--brand), #7C3AED);
       -webkit-background-clip:text;background-clip:text;color:transparent;}
     .title .sub{color:var(--muted);font-size:12.5px;line-height:1.45;max-width:640px}
     .status{display:flex;gap:11px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:12.5px;}
@@ -163,9 +163,9 @@
     .kospiHead .badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid var(--ko-up);color:var(--ko-up);background:transparent}
     .kospiHead .src{color:var(--dim);font-size:12px;margin-left:auto}
     .kGrid{display:grid;grid-template-columns:repeat(auto-fit, minmax(214px, 1fr));gap:12px}
-    /* 도미넌스·야간선물 보드는 카드 1개라 full-width로 늘어나지 않게 폭을 캡(메모리 카드처럼 컴팩트) */
-    /* 도미넌스/야간선물 보드: 좁으면 1열, 넓으면 2열까지 (카드 폭 캡) */
-    #domBoard .kGrid, #nightBoard .kGrid{grid-template-columns:repeat(auto-fit, minmax(258px, 420px));justify-content:start}
+    /* 도미넌스/야간선물 보드: 메모리 보드처럼 바둑판(폰에서도 2열). 최소폭 200px·최대 360px 캡 */
+    #domBoard .kGrid, #nightBoard .kGrid{grid-template-columns:repeat(auto-fit, minmax(200px, 360px));justify-content:start}
+    #domBoard .kCard, #nightBoard .kCard{min-width:0}
     @media (max-width:560px){.kGrid{grid-template-columns:1fr 1fr}}
     @media (max-width:380px){.kGrid{grid-template-columns:1fr}}
     .kCard{position:relative;border:1px solid var(--line);border-radius:var(--radius);padding:16px 16px 14px;background:var(--surface);box-shadow:var(--shadow-sm);cursor:pointer;transition:transform .12s ease, box-shadow .15s ease, border-color .15s ease}
