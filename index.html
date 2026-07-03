@@ -204,7 +204,7 @@
       background:var(--surface-2);
     }
     #tvTitle{font-weight:800;letter-spacing:-.01em}
-    #tvChart{height:72vh;min-height:520px}
+    #tvChart{position:relative;height:72vh;min-height:520px}
     @media (max-width:760px){
       .hdr{display:none}
       .row{grid-template-columns: 1fr 1fr;grid-template-areas:"sym chg" "price vol" "usd vol";row-gap:8px;}
@@ -2008,8 +2008,9 @@ async function openTradingView(it){
     const containerId = "tv_chart_container";
     const c = document.createElement("div");
     c.id = containerId;
-    c.style.width = "100%";
-    c.style.height = "100%";
+    // 절대 위치로 #tvChart 박스를 꽉 채움 → 플렉스에서 height:100%가 안 먹어 차트가 납작해지던 문제 해결
+    c.style.position = "absolute";
+    c.style.inset = "0";
     tvChart.appendChild(c);
 
     tvWidget = new TradingView.widget({
