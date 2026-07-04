@@ -205,6 +205,9 @@
     }
     #tvTitle{font-weight:800;letter-spacing:-.01em}
     #tvChart{position:relative;height:72vh;min-height:520px}
+    /* TradingView 컨테이너/아이프레임을 부모(#tvChart)에 절대위치로 꽉 채움 → in-flow %높이 해석에 의존하지 않고 오프셋(used height)으로 높이를 확정. 전체화면/일반 모드 모두 동일하게 동작 */
+    #tvChart #tv_chart_container{position:absolute;inset:0}
+    #tvChart iframe{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;border:0}
     @media (max-width:760px){
       .hdr{display:none}
       .row{grid-template-columns: 1fr 1fr;grid-template-areas:"sym chg" "price vol" "usd vol";row-gap:8px;}
@@ -214,14 +217,20 @@
     }
     /* 차트 화면: 전체화면 고정 오버레이 + 페이지 스크롤 잠금 (모바일에서 주소창 토글/스크롤 방지) */
     body.tv-open{overflow:hidden;overscroll-behavior:none;}
-    /* #tvView를 세로 플렉스로 → 상단 배너와 차트박스가 100dvh를 '나눠' 가짐(예전엔 배너 높이만큼 넘쳐 아래가 잘림) */
-    body.tv-open #tvView{position:fixed;inset:0;z-index:1000;margin:0;height:100vh;height:100dvh;background:var(--bg);overscroll-behavior:none;display:flex;flex-direction:column;}
-    /* 전체화면에선 상단 배너를 얇은 '뒤로' 바로 축소 → 차트에 세로 공간 최대 확보 */
-    body.tv-open .top{flex:0 0 auto;margin:0;padding:8px 14px;border:0;border-radius:0;box-shadow:none;background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;border-bottom:1px solid var(--line);}
+    /* #tvView: 화면 전체를 덮는 고정 오버레이. position:fixed 이므로 자식 absolute 요소들의 컨테이닝 블록이 됨.
+       JS가 인라인 display:block 을 걸어도 무관 — 아래 레이아웃은 flex/grid 에 의존하지 않고 오프셋(inset)으로 높이를 확정 */
+    body.tv-open #tvView{position:fixed;inset:0;z-index:1000;margin:0;height:100vh;height:100dvh;background:var(--bg);overscroll-behavior:none;}
+    /* 상단 '뒤로' 바: 높이를 48px 로 고정 → 아래 #tvBox 의 top 오프셋이 확정값이 됨. nowrap 로 줄바꿈 방지 */
+    body.tv-open .top{height:48px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;flex-wrap:nowrap;overflow:hidden;margin:0;padding:0 14px;border:0;border-radius:0;box-shadow:none;background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;border-bottom:1px solid var(--line);}
     body.tv-open .top .sub{display:none;}
     body.tv-open .title h1{font-size:15px;font-weight:800;}
-    body.tv-open #tvBox{flex:1 1 auto;min-height:0;margin:0;border:0;border-radius:0;box-shadow:none;display:flex;flex-direction:column;}
-    body.tv-open #tvChart{flex:1 1 auto;height:auto;min-height:0;}
+    /* #tvBox: 절대배치 top=배너높이(48px), bottom:0 → 높이 = (뷰포트-48px) 확정 픽셀값 (flex/percent 의존 없음) */
+    body.tv-open #tvBox{position:absolute;left:0;right:0;top:48px;bottom:0;margin:0;border:0;border-radius:0;box-shadow:none;overflow:hidden;background:var(--surface);}
+    /* #tvHeader: 종목명 바, 높이 44px 고정 → 아래 #tvChart top 오프셋 확정 */
+    body.tv-open #tvHeader{height:44px;box-sizing:border-box;padding:0 16px;flex-wrap:nowrap;overflow:hidden;}
+    /* #tvChart: 절대배치 top=헤더높이(44px), bottom:0 → 높이 = (뷰포트-48-44) 확정 픽셀값.
+       JS가 만든 컨테이너 div(position:absolute;inset:0)가 이 확정 영역을 그대로 채움 → 붕괴/잘림 불가능 */
+    body.tv-open #tvChart{position:absolute;left:0;right:0;top:44px;bottom:0;height:auto;min-height:0;}
   </style>
 </head>
 <body>
