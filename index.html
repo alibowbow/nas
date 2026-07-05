@@ -198,8 +198,51 @@
     .shareBtn svg{display:block}
     @media (hover:none){.shareBtn{opacity:.72}}
     @keyframes spin{to{transform:rotate(360deg)}}
-    #toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,12px);z-index:2000;max-width:86vw;padding:11px 16px;border-radius:12px;background:var(--surface);color:var(--text);border:1px solid var(--line-2);box-shadow:var(--shadow);font-size:13px;font-weight:600;letter-spacing:-.01em;opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease}
+    #toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,12px);z-index:4000;max-width:86vw;padding:11px 16px;border-radius:12px;background:var(--surface);color:var(--text);border:1px solid var(--line-2);box-shadow:var(--shadow);font-size:13px;font-weight:600;letter-spacing:-.01em;opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease}
     #toast.show{opacity:1;transform:translate(-50%,0)}
+    /* ── 공유 포스터 모달 ── */
+    body.share-open{overflow:hidden}
+    .shareModal{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px}
+    .shareModal[hidden]{display:none}
+    .shareBackdrop{position:absolute;inset:0;background:rgba(6,10,18,.6);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+    .shareSheet{position:relative;z-index:1;width:min(384px,95vw);max-height:95vh;overflow:auto;background:var(--surface);border:1px solid var(--line-2);border-radius:22px;box-shadow:0 26px 72px rgba(0,0,0,.5);padding:15px 15px 13px;display:flex;flex-direction:column;gap:13px}
+    .shareSheetHead{display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:14.5px;color:var(--text)}
+    .shareClose{width:32px;height:32px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+    .shareClose:hover{color:var(--text);background:var(--surface-hover)}
+    .sharePosterWrap{display:flex;justify-content:center}
+    .sharePoster{width:min(336px,84vw);box-sizing:border-box;border-radius:20px;padding:24px 22px 18px;position:relative;overflow:hidden;font-variant-numeric:tabular-nums}
+    .sharePoster.dark{background:linear-gradient(160deg,#18243d 0%,#0c1220 55%,#080d17 100%);color:#EAF0FA}
+    .sharePoster.light{background:linear-gradient(180deg,#ffffff,#eff3f8);color:#0E1520;box-shadow:inset 0 0 0 1px #e4e9f0}
+    .spTop{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:700;letter-spacing:.01em}
+    .sharePoster.dark .spTop{color:#93a5c0}
+    .sharePoster.light .spTop{color:#6b7688}
+    .spBrand{display:inline-flex;align-items:center;gap:5px;font-weight:800}
+    .spBrand b{color:#5b8cff;font-style:normal}
+    .spId{display:flex;align-items:center;gap:11px;margin-top:20px}
+    .spLogo{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff;flex:0 0 auto;box-shadow:0 6px 15px rgba(0,0,0,.32)}
+    .spName{font-size:19px;font-weight:850;letter-spacing:-.01em;line-height:1.12}
+    .spSub{font-size:12px;margin-top:3px;opacity:.6}
+    .spPrice{font-size:42px;font-weight:850;letter-spacing:-.03em;line-height:1;margin-top:18px;word-break:keep-all}
+    .spPrice .spCur{font-size:22px;font-weight:800;opacity:.68}
+    .spDelta{display:inline-flex;align-items:center;gap:6px;margin-top:13px;padding:6px 12px;border-radius:999px;font-size:14.5px;font-weight:800}
+    .spDelta.up{color:#ff5f6e;background:rgba(246,70,93,.15)}
+    .spDelta.down{color:#5aa0ff;background:rgba(81,147,255,.16)}
+    .spDelta.flat{color:#9fb0c9;background:rgba(160,176,201,.14)}
+    .spMeta{margin-top:13px;font-size:12.5px;opacity:.72;font-weight:600}
+    .spFoot{margin-top:22px;padding-top:15px;border-top:1px solid rgba(255,255,255,.09)}
+    .sharePoster.light .spFoot{border-top-color:rgba(13,24,43,.1)}
+    .spTag{font-size:12px;opacity:.62;font-weight:600}
+    .spUrl{margin-top:6px;font-size:12.5px;font-weight:800;letter-spacing:.02em}
+    .sharePoster.dark .spUrl{color:#8fb4ff}
+    .sharePoster.light .spUrl{color:#3182F6}
+    .shareActions{display:grid;grid-template-columns:auto 1fr 1fr;gap:8px}
+    .shareAct{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:10px 6px;border-radius:13px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);font-size:12px;font-weight:700;cursor:pointer;transition:transform .1s,background .14s,border-color .14s,filter .14s}
+    .shareAct:hover{background:var(--surface-hover)}
+    .shareAct:active{transform:scale(.97)}
+    .shareAct.primary{background:var(--brand);color:#fff;border-color:transparent}
+    .shareAct.primary:hover{filter:brightness(1.07)}
+    .shareAct svg{width:17px;height:17px}
+    .shareAct.busy{pointer-events:none;opacity:.6}
 
     /* TV view */
     #tvView{display:none}
@@ -2112,59 +2155,137 @@ function toast(msg){
   _toastTimer = setTimeout(()=> el.classList.remove("show"), 2300);
 }
 
-function cardShareLabel(card){
-  const name = card.querySelector(".kName");
-  const price = card.querySelector(".kPrice");
-  let s = name ? name.textContent.trim() : "카드";
-  const pv = price ? price.textContent.trim().replace(/\s+/g, " ") : "";
-  if(pv && pv !== "-" && pv !== "₩-") s += " " + pv;
-  return s;
+const DL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 11 5 4 5-4"/><path d="M5 20h14"/></svg>';
+const THEME_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.4M12 19.6V22M2 12h2.4M19.6 12H22M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M19.1 4.9l-1.7 1.7M6.6 17.4l-1.7 1.7"/></svg>';
+
+function escapeHtml(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, c=> ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+// 클릭한 카드의 현재 값들을 읽어와 포스터 재구성용 데이터로
+function extractCardData(card){
+  const q = s => card.querySelector(s);
+  const dEl = q(".kDelta"), logo = q(".kLogo"), live = q(".kLive span:last-child");
+  const cls = dEl ? (dEl.classList.contains("up") ? "up" : dEl.classList.contains("down") ? "down" : "flat") : "flat";
+  const usd = q(".kUsd") ? q(".kUsd").textContent.trim() : "";
+  return {
+    name:  q(".kName")  ? q(".kName").textContent.trim()  : "-",
+    sub:   q(".kSub")   ? q(".kSub").textContent.trim()   : "",
+    price: q(".kPrice") ? q(".kPrice").textContent.trim() : "-",
+    usd:   (usd && usd !== "$ -" && usd !== "$-") ? usd : "",
+    cap:   q(".kCap")   ? q(".kCap").textContent.replace(/\s+/g, " ").trim() : "",
+    delta: dEl ? dEl.textContent.trim() : "",
+    deltaCls: cls,
+    live:  live ? live.textContent.trim() : "",
+    logoText: logo ? logo.textContent.trim() : "•",
+    logoBg:   logo ? (logo.style.background || getComputedStyle(logo).backgroundColor || "#334155") : "#334155"
+  };
 }
 
-async function shareCardImage(card, btn){
-  if(btn && btn.classList.contains("busy")) return;   // 캡처 중 중복 클릭 무시(재진입 방지)
-  _captureInFlight = true;                             // 템플릿 카드 재렌더 잠시 정지(노드 분리 방지)
+function posterDateKST(){
+  try{ return new Intl.DateTimeFormat("ko-KR", { timeZone:"Asia/Seoul", year:"numeric", month:"numeric", day:"numeric" }).format(new Date()); }
+  catch(_){ return ""; }
+}
+function fmtPosterPrice(txt){ return escapeHtml(txt).replace(/^([₩$])\s*/, '<span class="spCur">$1</span> '); }
+
+// 날짜·브랜드·주소가 담긴 세로 포스터
+function buildPosterHTML(d, theme){
+  const meta = [d.usd, d.cap].filter(Boolean).join("  ·  ");
+  return `<div class="sharePoster ${theme}">
+    <div class="spTop"><span class="spDate">${escapeHtml(posterDateKST())}</span><span class="spBrand">마켓 라이브 <b>◆</b></span></div>
+    <div class="spId">
+      <span class="spLogo" style="background:${escapeHtml(d.logoBg)}">${escapeHtml(d.logoText)}</span>
+      <div style="min-width:0">
+        <div class="spName">${escapeHtml(d.name)}</div>
+        ${d.sub ? `<div class="spSub">${escapeHtml(d.sub)}</div>` : ""}
+      </div>
+    </div>
+    <div class="spPrice">${fmtPosterPrice(d.price)}</div>
+    ${d.delta ? `<div class="spDelta ${d.deltaCls}">${escapeHtml(d.delta)}</div>` : ""}
+    ${meta ? `<div class="spMeta">${escapeHtml(meta)}</div>` : ""}
+    <div class="spFoot">
+      <div class="spTag">${escapeHtml(d.live || "실시간 시세 · TradFi × Crypto")}</div>
+      <div class="spUrl">alibowbow.github.io/nas</div>
+    </div>
+  </div>`;
+}
+
+let _shareTheme = "dark";
+let _shareModalEl = null;
+function ensureShareModal(){
+  if(_shareModalEl) return _shareModalEl;
+  const m = document.createElement("div");
+  m.className = "shareModal"; m.hidden = true;
+  m.innerHTML = `<div class="shareBackdrop"></div>
+    <div class="shareSheet" role="dialog" aria-modal="true" aria-label="카드 이미지 공유">
+      <div class="shareSheetHead"><span>카드 이미지 공유</span><button class="shareClose" type="button" aria-label="닫기">✕</button></div>
+      <div class="sharePosterWrap"></div>
+      <div class="shareActions">
+        <button class="shareAct" data-act="theme" type="button">${THEME_ICON}<span>테마</span></button>
+        <button class="shareAct primary" data-act="save" type="button">${DL_ICON}<span>저장</span></button>
+        <button class="shareAct" data-act="share" type="button">${SHARE_ICON}<span>공유</span></button>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+  m.querySelector(".shareBackdrop").addEventListener("click", closeShareModal);
+  m.querySelector(".shareClose").addEventListener("click", closeShareModal);
+  m.querySelector('[data-act="theme"]').addEventListener("click", ()=>{
+    _shareTheme = (_shareTheme === "dark") ? "light" : "dark";
+    const p = m.querySelector(".sharePoster"); if(p) p.className = "sharePoster " + _shareTheme;
+  });
+  m.querySelector('[data-act="save"]').addEventListener("click", (e)=> posterAction(e.currentTarget, "save"));
+  m.querySelector('[data-act="share"]').addEventListener("click", (e)=> posterAction(e.currentTarget, "share"));
+  _shareModalEl = m;
+  return m;
+}
+function openShareModal(card){
+  const data = extractCardData(card);
+  const m = ensureShareModal();
+  m.querySelector(".sharePosterWrap").innerHTML = buildPosterHTML(data, _shareTheme);
+  m.hidden = false;
+  document.body.classList.add("share-open");
+  loadHtml2Canvas().catch(()=>{});   // 예열
+}
+function closeShareModal(){
+  if(_shareModalEl) _shareModalEl.hidden = true;
+  document.body.classList.remove("share-open");
+}
+window.addEventListener("keydown", (e)=>{ if(e.key === "Escape" && _shareModalEl && !_shareModalEl.hidden) closeShareModal(); });
+
+// 포스터를 이미지로: mode "save"(다운로드) / "share"(파일공유→클립보드→다운로드)
+async function posterAction(btn, mode){
+  const poster = _shareModalEl && _shareModalEl.querySelector(".sharePoster");
+  if(!poster || (btn && btn.classList.contains("busy"))) return;
   if(btn) btn.classList.add("busy");
+  _captureInFlight = true;
   try{
     await loadHtml2Canvas();
-    const bg = (getComputedStyle(document.documentElement).getPropertyValue("--bg") || "#0E1117").trim();
-    const canvas = await html2canvas(card, {
-      backgroundColor: bg,
-      scale: 3,
-      useCORS: true,
-      logging: false,
-      ignoreElements: (el)=> el.classList && el.classList.contains("shareBtn"),
-      // 캡처본에선 버튼용으로 비워둔 우측 여백 제거 → 헤더 우측 빈 공간 없이 깔끔하게
-      onclone: (cdoc)=>{ try{ cdoc.querySelectorAll(".kTop").forEach(t=> t.style.paddingRight = "0"); }catch(_){} }
-    });
+    const canvas = await html2canvas(poster, { backgroundColor:null, scale:3, useCORS:true, logging:false });
     const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
     if(!blob){ toast("이미지 생성에 실패했어요"); return; }
-    const nm = (card.querySelector(".kName")?.textContent || "card").trim();
+    const nm = (poster.querySelector(".spName")?.textContent || "card").trim();
     const fname = (nm.replace(/[^\w가-힣._-]+/g, "_").slice(0, 32) || "card") + ".png";
-    const file = new File([blob], fname, { type: "image/png" });
-    const text = cardShareLabel(card) + " · alibowbow.github.io/nas";
-    // 1) 파일 공유(주로 모바일) — 지원되면 이 경로만 사용(실패해도 다운로드로 안 내려감: iOS에서 탭이 이미지로 튀는 것 방지)
-    if(navigator.canShare && navigator.canShare({ files: [file] })){
-      try{ await navigator.share({ files: [file], title: nm, text }); }
-      catch(err){ if(!(err && err.name === "AbortError")) toast("공유를 완료하지 못했어요 — 다시 시도해줘"); }
-      return;
-    }
-    // 2) 클립보드 이미지 복사(주로 데스크톱)
-    try{
-      if(navigator.clipboard && window.ClipboardItem){
-        await navigator.clipboard.write([ new ClipboardItem({ "image/png": blob }) ]);
-        toast("카드 이미지를 클립보드에 복사했어요 📋");
+    if(mode === "share"){
+      const file = new File([blob], fname, { type:"image/png" });
+      const text = nm + " · alibowbow.github.io/nas";
+      if(navigator.canShare && navigator.canShare({ files:[file] })){
+        try{ await navigator.share({ files:[file], title:nm, text }); }
+        catch(err){ if(!(err && err.name === "AbortError")) toast("공유를 완료하지 못했어요 — 다시 시도해줘"); }
         return;
       }
-    }catch(err){ /* 클립보드 권한 없음 → 다운로드로 */ }
-    // 3) 다운로드 폴백(파일 공유 미지원 데스크톱)
+      try{
+        if(navigator.clipboard && window.ClipboardItem){
+          await navigator.clipboard.write([ new ClipboardItem({ "image/png": blob }) ]);
+          toast("이미지를 클립보드에 복사했어요 📋"); return;
+        }
+      }catch(_){}
+    }
+    // 저장 또는 공유 폴백 → 다운로드
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = fname;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=> URL.revokeObjectURL(url), 2000);
     toast("이미지를 저장했어요 ⬇️");
   }catch(err){
-    toast("공유 실패 — 네트워크 확인 후 다시 시도해줘");
+    toast("실패 — 잠시 후 다시 시도해줘");
   }finally{
     _captureInFlight = false;
     if(btn) btn.classList.remove("busy");
@@ -2178,7 +2299,7 @@ document.addEventListener("click", (e)=>{
   e.stopPropagation();
   e.preventDefault();
   const card = btn.closest(".kCard");
-  if(card) shareCardImage(card, btn);
+  if(card) openShareModal(card);
 }, true);
 // html2canvas 예열 → 공유 탭 시 네트워크 대기 없이 즉시 캡처(특히 iOS Web Share의 사용자 제스처 창 안에서 완료).
 // (1) 로드 후 유휴 시간에 미리 받아두고 (2) 첫 상호작용 때도 한 번 더(백스톱).
