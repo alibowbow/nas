@@ -187,6 +187,19 @@
     .kCap{font-size:11.5px;color:var(--dim);margin-top:7px}
     .kCap b{color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums}
     .kLive{display:flex;align-items:center;gap:6px;color:var(--dim);font-size:11px;margin-top:11px;border-top:1px solid var(--line);padding-top:10px}
+    /* ── 카드 이미지 공유(스크린샷) ── */
+    .kTop{padding-right:24px}                 /* 우상단 공유 버튼 자리 확보 */
+    .shareBtn{position:absolute;top:9px;right:9px;z-index:3;width:28px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);cursor:pointer;opacity:0;transition:opacity .14s ease,background .14s,color .14s,border-color .14s,transform .1s}
+    .kCard:hover .shareBtn{opacity:1}
+    .shareBtn:hover{background:var(--brand-soft);color:var(--brand);border-color:var(--brand-line)}
+    .shareBtn:active{transform:scale(.9)}
+    .shareBtn.busy{opacity:1;pointer-events:none}
+    .shareBtn.busy svg{animation:spin .8s linear infinite}
+    .shareBtn svg{display:block}
+    @media (hover:none){.shareBtn{opacity:.72}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    #toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,12px);z-index:2000;max-width:86vw;padding:11px 16px;border-radius:12px;background:var(--surface);color:var(--text);border:1px solid var(--line-2);box-shadow:var(--shadow);font-size:13px;font-weight:600;letter-spacing:-.01em;opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease}
+    #toast.show{opacity:1;transform:translate(-50%,0)}
 
     /* TV view */
     #tvView{display:none}
@@ -886,6 +899,10 @@ function fmtMarketCap(krw){
   return Math.round(krw / 1e8).toLocaleString("ko-KR") + "억원";
 }
 
+/* 카드 우상단 '이미지로 공유' 버튼(아이콘) — 모든 카드가 공유 */
+const SHARE_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m8 7 4-4 4 4"/><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/></svg>';
+const SHARE_BTN = `<button class="shareBtn" type="button" title="카드 이미지로 공유" aria-label="카드 이미지로 공유">${SHARE_ICON}</button>`;
+
 function makeKospiCard(it, mode){
   // mode: "stock"(원화 환산) · "quote"(USD/지수 값) · "index"(KOSPI 지수)
   const isStock = (mode === "stock");
@@ -927,6 +944,11 @@ function makeKospiCard(it, mode){
   card.appendChild(delta);
   if(cap) card.appendChild(cap);
   card.appendChild(live);
+  const shareBtn = document.createElement("button");
+  shareBtn.className = "shareBtn"; shareBtn.type = "button";
+  shareBtn.title = "카드 이미지로 공유"; shareBtn.setAttribute("aria-label", "카드 이미지로 공유");
+  shareBtn.innerHTML = SHARE_ICON;
+  card.appendChild(shareBtn);
   card.addEventListener("click", ()=> openTradingView(it));
 
   kospiCardEls.set(it.id, { priceEl:price, usdEl:usd, deltaEl:delta, capEl:cap, dotEl:ld, mode, def:it });
@@ -1144,7 +1166,7 @@ const nightNum = (x) => {
   return isFinite(n) ? n : NaN;
 };
 function nightCardHTML(o){
-  return `<div class="kCard index" style="cursor:default">
+  return `<div class="kCard index" style="cursor:default">${SHARE_BTN}
     <div class="kTop">
       <div class="kLogo" style="background:#0EA5E9">선물</div>
       <div style="min-width:0">
@@ -1203,7 +1225,7 @@ function renderNight(s){
 }
 /* ===== 삼전하닉 도미넌스 카드 ===== */
 function domCardHTML(o){
-  return `<div class="kCard index" style="cursor:default">
+  return `<div class="kCard index" style="cursor:default">${SHARE_BTN}
     <div class="kTop">
       <div class="kLogo" style="background:#7C3AED">반도체</div>
       <div style="min-width:0">
@@ -1218,7 +1240,7 @@ function domCardHTML(o){
 }
 // 코스피 종합지수 카드 (워커가 준 nightKospi 값 표시). 장중 실시간 / 마감 후 마감값 고정.
 function kospiIdxCardHTML(o){
-  return `<div class="kCard index" style="cursor:default">
+  return `<div class="kCard index" style="cursor:default">${SHARE_BTN}
     <div class="kTop">
       <div class="kLogo" style="background:#0F766E">KS</div>
       <div style="min-width:0">
@@ -2059,6 +2081,97 @@ document.getElementById("backBtn").onclick = ()=>{
 window.addEventListener("keydown", (e)=>{ if(e.key === "Escape" && tvView.style.display === "block") history.back(); });
 // 휴대폰/브라우저 뒤로가기: 차트가 열려 있으면 사이트를 떠나지 않고 목록으로 복귀
 window.addEventListener("popstate", ()=>{ if(tvView.style.display === "block") goBack(); });
+
+/* ===== 카드 이미지로 공유(스크린샷) =====
+   각 카드의 우상단 버튼 → 그 카드를 이미지(PNG)로 캡처 → 파일공유(모바일)/클립보드복사(데스크톱)/다운로드 순서로 처리 */
+let _h2cPromise = null;
+function loadHtml2Canvas(){
+  if(window.html2canvas) return Promise.resolve();
+  if(_h2cPromise) return _h2cPromise;
+  _h2cPromise = new Promise((resolve, reject)=>{
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+    s.onload = ()=> resolve();
+    s.onerror = ()=>{ _h2cPromise = null; reject(new Error("html2canvas load failed")); };
+    document.head.appendChild(s);
+  });
+  return _h2cPromise;
+}
+
+let _toastTimer = null;
+function toast(msg){
+  let el = document.getElementById("toast");
+  if(!el){ el = document.createElement("div"); el.id = "toast"; document.body.appendChild(el); }
+  el.textContent = msg;
+  requestAnimationFrame(()=> el.classList.add("show"));
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(()=> el.classList.remove("show"), 2300);
+}
+
+function cardShareLabel(card){
+  const name = card.querySelector(".kName");
+  const price = card.querySelector(".kPrice");
+  let s = name ? name.textContent.trim() : "카드";
+  const pv = price ? price.textContent.trim().replace(/\s+/g, " ") : "";
+  if(pv && pv !== "-" && pv !== "₩-") s += " " + pv;
+  return s;
+}
+
+async function shareCardImage(card, btn){
+  if(btn) btn.classList.add("busy");
+  try{
+    await loadHtml2Canvas();
+    const bg = (getComputedStyle(document.documentElement).getPropertyValue("--bg") || "#0E1117").trim();
+    const canvas = await html2canvas(card, {
+      backgroundColor: bg,
+      scale: 3,
+      useCORS: true,
+      logging: false,
+      ignoreElements: (el)=> el.classList && el.classList.contains("shareBtn")
+    });
+    const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
+    if(!blob){ toast("이미지 생성에 실패했어요"); return; }
+    const nm = (card.querySelector(".kName")?.textContent || "card").trim();
+    const fname = (nm.replace(/[^\w가-힣._-]+/g, "_").slice(0, 32) || "card") + ".png";
+    const file = new File([blob], fname, { type: "image/png" });
+    const text = cardShareLabel(card) + " · alibowbow.github.io/nas";
+    // 1) 파일 공유(주로 모바일)
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      try{ await navigator.share({ files: [file], title: nm, text }); return; }
+      catch(err){ if(err && err.name === "AbortError") return; }
+    }
+    // 2) 클립보드 이미지 복사(주로 데스크톱)
+    try{
+      if(navigator.clipboard && window.ClipboardItem){
+        await navigator.clipboard.write([ new ClipboardItem({ "image/png": blob }) ]);
+        toast("카드 이미지를 클립보드에 복사했어요 📋");
+        return;
+      }
+    }catch(err){ /* 클립보드 권한 없음 → 다운로드로 */ }
+    // 3) 다운로드 폴백
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = fname;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=> URL.revokeObjectURL(url), 2000);
+    toast("이미지를 저장했어요 ⬇️");
+  }catch(err){
+    toast("공유 실패 — 네트워크 확인 후 다시 시도해줘");
+  }finally{
+    if(btn) btn.classList.remove("busy");
+  }
+}
+
+// 공유 버튼(캡처 단계 위임) — 카드 클릭(차트 열기)보다 먼저 가로채 stopPropagation
+document.addEventListener("click", (e)=>{
+  const btn = e.target && e.target.closest ? e.target.closest(".shareBtn") : null;
+  if(!btn) return;
+  e.stopPropagation();
+  e.preventDefault();
+  const card = btn.closest(".kCard");
+  if(card) shareCardImage(card, btn);
+}, true);
+// 첫 상호작용 때 html2canvas 미리 로드 → 공유 탭 시 즉시 캡처(특히 iOS Web Share 제스처 유지)
+window.addEventListener("pointerdown", ()=> loadHtml2Canvas().catch(()=>{}), { once:true, passive:true });
 
 /* ===== 코스피(한국주) 등락률: 전일 KRX 마감(15:30 KST) 기준 =====
    토큰화 선물은 24시간 거래돼 일봉 시가(09:00 KST)만으로는 본장 등락률과 어긋나요.
