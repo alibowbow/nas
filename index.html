@@ -188,12 +188,12 @@
     .kCap b{color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums}
     .kLive{display:flex;align-items:center;gap:6px;color:var(--dim);font-size:11px;margin-top:11px;border-top:1px solid var(--line);padding-top:10px}
     /* ── 카드 이미지 공유(스크린샷) ── */
-    .kTop{padding-right:24px}                 /* 우상단 공유 버튼 자리 확보 */
+    .kTop{padding-right:28px}                 /* 우상단 공유 버튼 자리 확보 */
     .shareBtn{position:absolute;top:9px;right:9px;z-index:3;width:28px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);cursor:pointer;opacity:0;transition:opacity .14s ease,background .14s,color .14s,border-color .14s,transform .1s}
     .kCard:hover .shareBtn{opacity:1}
     .shareBtn:hover{background:var(--brand-soft);color:var(--brand);border-color:var(--brand-line)}
     .shareBtn:active{transform:scale(.9)}
-    .shareBtn.busy{opacity:1;pointer-events:none}
+    .shareBtn.busy{opacity:1}   /* pointer-events는 유지 → 캡처 중 재클릭이 카드로 새어 차트가 열리지 않게 */
     .shareBtn.busy svg{animation:spin .8s linear infinite}
     .shareBtn svg{display:block}
     @media (hover:none){.shareBtn{opacity:.72}}
@@ -902,6 +902,7 @@ function fmtMarketCap(krw){
 /* 카드 우상단 '이미지로 공유' 버튼(아이콘) — 모든 카드가 공유 */
 const SHARE_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m8 7 4-4 4 4"/><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/></svg>';
 const SHARE_BTN = `<button class="shareBtn" type="button" title="카드 이미지로 공유" aria-label="카드 이미지로 공유">${SHARE_ICON}</button>`;
+let _captureInFlight = false;   // 카드 캡처 중엔 템플릿 카드 재렌더(innerHTML 교체)를 잠시 멈춰 노드 분리로 인한 빈 이미지 방지
 
 function makeKospiCard(it, mode){
   // mode: "stock"(원화 환산) · "quote"(USD/지수 값) · "index"(KOSPI 지수)
@@ -1180,6 +1181,7 @@ function nightCardHTML(o){
   </div>`;
 }
 function renderNight(s){
+  if(_captureInFlight) return;   // 캡처 중 노드 분리 방지
   if(!nightFutCard) return;
   nightView = s.kind;
   if(s.kind === "closed"){
@@ -1254,6 +1256,7 @@ function kospiIdxCardHTML(o){
   </div>`;
 }
 function renderKospiIndex(){
+  if(_captureInFlight) return;   // 캡처 중 노드 분리 방지
   if(!kospiIdxCard) return;
   const v = nightKospi.value;
   let key, html;
@@ -1276,6 +1279,7 @@ function renderKospiIndex(){
 }
 // 분자는 라이브(삼성·하닉 24h MEXC), 분모는 워커가 준 코스피지수(캐시). 매 렌더틱마다 갱신.
 function renderDominance(){
+  if(_captureInFlight) return;   // 캡처 중 노드 분리 방지
   renderKospiIndex();
   if(!domCard) return;
   const sv = lastValue.get("M:SAMSUNG"), hv = lastValue.get("M:SKHYNIX");
@@ -2118,6 +2122,8 @@ function cardShareLabel(card){
 }
 
 async function shareCardImage(card, btn){
+  if(btn && btn.classList.contains("busy")) return;   // 캡처 중 중복 클릭 무시(재진입 방지)
+  _captureInFlight = true;                             // 템플릿 카드 재렌더 잠시 정지(노드 분리 방지)
   if(btn) btn.classList.add("busy");
   try{
     await loadHtml2Canvas();
@@ -2127,7 +2133,9 @@ async function shareCardImage(card, btn){
       scale: 3,
       useCORS: true,
       logging: false,
-      ignoreElements: (el)=> el.classList && el.classList.contains("shareBtn")
+      ignoreElements: (el)=> el.classList && el.classList.contains("shareBtn"),
+      // 캡처본에선 버튼용으로 비워둔 우측 여백 제거 → 헤더 우측 빈 공간 없이 깔끔하게
+      onclone: (cdoc)=>{ try{ cdoc.querySelectorAll(".kTop").forEach(t=> t.style.paddingRight = "0"); }catch(_){} }
     });
     const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
     if(!blob){ toast("이미지 생성에 실패했어요"); return; }
@@ -2135,10 +2143,11 @@ async function shareCardImage(card, btn){
     const fname = (nm.replace(/[^\w가-힣._-]+/g, "_").slice(0, 32) || "card") + ".png";
     const file = new File([blob], fname, { type: "image/png" });
     const text = cardShareLabel(card) + " · alibowbow.github.io/nas";
-    // 1) 파일 공유(주로 모바일)
+    // 1) 파일 공유(주로 모바일) — 지원되면 이 경로만 사용(실패해도 다운로드로 안 내려감: iOS에서 탭이 이미지로 튀는 것 방지)
     if(navigator.canShare && navigator.canShare({ files: [file] })){
-      try{ await navigator.share({ files: [file], title: nm, text }); return; }
-      catch(err){ if(err && err.name === "AbortError") return; }
+      try{ await navigator.share({ files: [file], title: nm, text }); }
+      catch(err){ if(!(err && err.name === "AbortError")) toast("공유를 완료하지 못했어요 — 다시 시도해줘"); }
+      return;
     }
     // 2) 클립보드 이미지 복사(주로 데스크톱)
     try{
@@ -2148,7 +2157,7 @@ async function shareCardImage(card, btn){
         return;
       }
     }catch(err){ /* 클립보드 권한 없음 → 다운로드로 */ }
-    // 3) 다운로드 폴백
+    // 3) 다운로드 폴백(파일 공유 미지원 데스크톱)
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = fname;
     document.body.appendChild(a); a.click(); a.remove();
@@ -2157,6 +2166,7 @@ async function shareCardImage(card, btn){
   }catch(err){
     toast("공유 실패 — 네트워크 확인 후 다시 시도해줘");
   }finally{
+    _captureInFlight = false;
     if(btn) btn.classList.remove("busy");
   }
 }
@@ -2170,7 +2180,9 @@ document.addEventListener("click", (e)=>{
   const card = btn.closest(".kCard");
   if(card) shareCardImage(card, btn);
 }, true);
-// 첫 상호작용 때 html2canvas 미리 로드 → 공유 탭 시 즉시 캡처(특히 iOS Web Share 제스처 유지)
+// html2canvas 예열 → 공유 탭 시 네트워크 대기 없이 즉시 캡처(특히 iOS Web Share의 사용자 제스처 창 안에서 완료).
+// (1) 로드 후 유휴 시간에 미리 받아두고 (2) 첫 상호작용 때도 한 번 더(백스톱).
+(window.requestIdleCallback || window.setTimeout)(()=> loadHtml2Canvas().catch(()=>{}));
 window.addEventListener("pointerdown", ()=> loadHtml2Canvas().catch(()=>{}), { once:true, passive:true });
 
 /* ===== 코스피(한국주) 등락률: 전일 KRX 마감(15:30 KST) 기준 =====
