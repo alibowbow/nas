@@ -953,6 +953,7 @@ function makeKospiCard(it, mode){
   const isStock = (mode === "stock");
   const card = document.createElement("div");
   card.className = "kCard" + (isStock ? "" : " index");
+  card.dataset.instId = it.id;   // 공유 포스터가 앱 데이터모델(lastValue)에서 직접 시세를 읽을 수 있게
 
   const top = document.createElement("div"); top.className="kTop";
   if(it.logo || isStock){
@@ -2167,11 +2168,34 @@ function hasNum(s){ return /\d/.test(s || ""); }
 function extractCardData(card){
   const q = s => card.querySelector(s);
   const dEl = q(".kDelta"), logo = q(".kLogo"), live = q(".kLive span:last-child");
-  const cls = dEl ? (dEl.classList.contains("up") ? "up" : dEl.classList.contains("down") ? "down" : "flat") : "flat";
-  const price = q(".kPrice") ? q(".kPrice").textContent.trim() : "-";
-  const usd   = q(".kUsd")   ? q(".kUsd").textContent.trim()   : "";
-  const cap   = q(".kCap")   ? q(".kCap").textContent.replace(/\s+/g, " ").trim() : "";
-  const delta = dEl ? dEl.textContent.trim() : "";
+  let cls = dEl ? (dEl.classList.contains("up") ? "up" : dEl.classList.contains("down") ? "down" : "flat") : "flat";
+  let price = q(".kPrice") ? q(".kPrice").textContent.trim() : "-";
+  let usd   = q(".kUsd")   ? q(".kUsd").textContent.trim()   : "";
+  let cap   = q(".kCap")   ? q(".kCap").textContent.replace(/\s+/g, " ").trim() : "";
+  let delta = dEl ? dEl.textContent.trim() : "";
+
+  // DOM이 자리표시(₩-)면 앱의 실시간 데이터 모델(lastValue)에서 '우리앱의 가격'을 직접 계산해 사용
+  const id = card.dataset.instId;
+  const meta = id ? kospiCardEls.get(id) : null;
+  if(meta && !hasNum(price)){
+    const v = lastValue.get(id), fx = usdKrwRate();
+    if(v && isFinite(v.last)){
+      if(meta.mode === "stock"){
+        const scale = (meta.def && meta.def.krwScale) || 1;
+        if(isFinite(fx)){
+          const krw = v.last * fx * scale;
+          price = "₩" + fmtKRW(krw);
+          usd   = "$ " + fmtPrice(v.last) + " USD";
+          const shares = meta.def && meta.def.shares;
+          if(isFinite(shares) && shares > 0) cap = "시총 " + fmtMarketCap(krw * shares);
+        }
+      }else{
+        price = ((meta.def && meta.def.unit) || "") + fmtPrice(v.last);
+      }
+      if(isFinite(v.pct)){ const up = v.pct >= 0; delta = (up ? "▲ " : "▼ ") + Math.abs(v.pct).toFixed(2) + "%"; cls = up ? "up" : "down"; }
+    }
+  }
+
   return {
     name:  q(".kName") ? q(".kName").textContent.trim() : "-",
     sub:   q(".kSub")  ? q(".kSub").textContent.trim()  : "",
