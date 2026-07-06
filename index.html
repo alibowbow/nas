@@ -184,6 +184,14 @@
     .kDelta{font-variant-numeric:tabular-nums;font-weight:700;font-size:13px;margin-top:8px;color:var(--muted)}
     .kDelta.up{color:var(--ko-up)}    /* 한국식: 상승 빨강 */
     .kDelta.down{color:var(--ko-down)}  /* 하락 파랑 */
+    /* 도미넌스 카드: 삼성/하이닉스 등락률 2줄(라벨 왼쪽·% 오른쪽) */
+    .kDelta .domRow{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12.5px}
+    .kDelta .domRow + .domRow{margin-top:3px}
+    .kDelta .domRow > span{color:var(--muted);font-weight:600}
+    .kDelta .domPct{font-weight:800}
+    .kDelta .domPct.up{color:var(--ko-up)}
+    .kDelta .domPct.down{color:var(--ko-down)}
+    .kDelta .domPct.flat{color:var(--muted)}
     .kCap{font-size:11.5px;color:var(--dim);margin-top:7px}
     .kCap b{color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums}
     .kLive{display:flex;align-items:center;gap:6px;color:var(--dim);font-size:11px;margin-top:11px;border-top:1px solid var(--line);padding-top:10px}
@@ -1336,6 +1344,16 @@ function renderKospiIndex(){
   idxLastKey = key;
   kospiIdxCard.innerHTML = html;
 }
+// 도미넌스 카드 하단: '삼성/하이닉스 일간 등락률' 한 줄씩(라벨 + 색상 % ). 한국식 상승 빨강·하락 파랑.
+function domPctRow(label, pct){
+  let cls = "flat", body = "–";
+  if(isFinite(pct)){
+    const flat = Math.abs(pct) < 0.005, up = pct >= 0;
+    cls  = flat ? "flat" : (up ? "up" : "down");
+    body = (flat ? "" : (up ? "▲ " : "▼ ")) + (flat ? "" : (up ? "+" : "−")) + Math.abs(pct).toFixed(2) + "%";
+  }
+  return `<div class="domRow"><span>${label}</span><b class="domPct ${cls}">${body}</b></div>`;
+}
 // 분자는 라이브(삼성·하닉 24h MEXC), 분모는 워커가 준 코스피지수(캐시). 매 렌더틱마다 갱신.
 function renderDominance(){
   if(_captureInFlight) return;   // 캡처 중 노드 분리 방지
@@ -1353,15 +1371,18 @@ function renderDominance(){
   }else{
     const sKRW = sv.last * fx, hKRW = hv.last * fx;
     const kospi = nightKospi.value;
+    const deltaHTML = domPctRow("삼성", sv.pct) + domPctRow("하이닉스", hv.pct);
+    const spct = isFinite(sv.pct) ? sv.pct.toFixed(2) : "-";
+    const hpct = isFinite(hv.pct) ? hv.pct.toFixed(2) : "-";
     if(!isFinite(kospi)){
-      key = "nokospi|" + Math.round(sKRW) + "|" + Math.round(hKRW);
-      html = domCardHTML({ value:"-", delta:`삼성 ₩${fmtKRW(sKRW)} · 하닉 ₩${fmtKRW(hKRW)}`, live:false, foot:"코스피 지수 대기" });
+      key = "nokospi|" + spct + "|" + hpct;
+      html = domCardHTML({ value:"-", delta: deltaHTML, live:false, foot:"코스피 지수 대기" });
     }else{
       const dom = (DOM_A*sKRW + DOM_B*hKRW) / kospi;
-      key = "ok|" + dom.toFixed(2) + "|" + Math.round(sKRW) + "|" + Math.round(hKRW) + "|" + kospi;
+      key = "ok|" + dom.toFixed(2) + "|" + spct + "|" + hpct + "|" + kospi;
       html = domCardHTML({
         value: dom.toFixed(2) + "%",
-        delta: `삼성 ₩${fmtKRW(sKRW)} · 하닉 ₩${fmtKRW(hKRW)}`,
+        delta: deltaHTML,
         live: true,
         foot: `코스피 ${fmtPrice(kospi)} · ${nightKospi.source || "지수"}`
       });
@@ -2190,6 +2211,11 @@ function extractCardData(card){
   let usd   = q(".kUsd")   ? q(".kUsd").textContent.trim()   : "";
   let cap   = q(".kCap")   ? q(".kCap").textContent.replace(/\s+/g, " ").trim() : "";
   let delta = dEl ? dEl.textContent.trim() : "";
+  // 도미넌스 카드처럼 .kDelta가 여러 행(.domRow)이면 포스터용으로 한 줄로 합침(삼성 … · 하이닉스 …)
+  const domRows = dEl ? dEl.querySelectorAll(".domRow") : null;
+  if(domRows && domRows.length){
+    delta = Array.from(domRows).map(r => r.textContent.replace(/\s+/g, " ").trim()).join("  ·  ");
+  }
 
   // DOM이 자리표시(₩-)면 앱의 실시간 데이터 모델(lastValue)에서 '우리앱의 가격'을 직접 계산해 사용
   const id = card.dataset.instId;
