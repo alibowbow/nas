@@ -45,6 +45,8 @@ export default {
       ? { ok: true, source: night.source, ...night.data }
       : { ok: false, error: inSession ? "all night sources failed" : "closed" };
     out.kospi = kospi.value;          // 코스피 종합지수 (도미넌스 분모)
+    out.kospiChange = kospi.change;   // 일간 등락(포인트)
+    out.kospiPct = kospi.pct;         // 일간 등락률(%)
     out.kospiSource = kospi.source;
     if (debug) { out.attempts = night.attempts; out.kospiAttempts = kospi.attempts; out.dashboardDebug = _dashDbg; }
 
@@ -82,17 +84,41 @@ async function getNight() {
 // 코스피 종합지수(도미넌스 분모) — 야후/구글/네이버/대시보드 등 여러 경로를 순서대로 시도(특정 사이트 의존 X).
 async function fetchKospiIndex() {
   const attempts = [];
+  let value = NaN, source = null;
   for (const src of KOSPI_SOURCES) {
     try {
       const v = await src.fn();
       const ok = isFinite(v) && v > 1500 && v < 25000;  // 코스피 종합지수 범위(선물 1401·KOSPI200 360 등 오인 차단)
       attempts.push({ source: src.name, ok, value: isFinite(v) ? v : null });
-      if (ok) return { value: v, source: src.name, attempts };
+      if (ok) { value = v; source = src.name; break; }
     } catch (e) {
       attempts.push({ source: src.name, ok: false, error: String((e && e.message) || e) });
     }
   }
-  return { value: NaN, source: null, attempts };
+  // 일간 등락 = 실시간 지수(value) − 전일 종가. 전일 종가는 야후 chartPreviousClose(고정값·지연 무관).
+  // 실시간 값은 그대로 두고 등락만 얹으므로, 값 소스가 대시보드여도 정확한 일간 등락이 나옴.
+  let change = NaN, pct = NaN;
+  if (isFinite(value)) {
+    let prevClose = NaN;
+    try { prevClose = await fetchKospiPrevClose(); }
+    catch (e) { attempts.push({ source: "prevClose", ok: false, error: String((e && e.message) || e) }); }
+    if (isFinite(prevClose) && prevClose > 0) {
+      change = value - prevClose;
+      pct = change / prevClose * 100;
+      attempts.push({ source: "prevClose", ok: true, value: prevClose });
+    }
+  }
+  return { value, change, pct, source, attempts };
+}
+
+// 전일(직전 거래일) 종가 — 야후 ^KS11 meta.chartPreviousClose. 지수 절대레벨과 무관하게 등락 계산에만 사용.
+async function fetchKospiPrevClose() {
+  const r = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/%5EKS11?range=1d&interval=1d",
+    { headers: { "User-Agent": UA } });
+  const j = await r.json();
+  const meta = j && j.chart && j.chart.result && j.chart.result[0] && j.chart.result[0].meta;
+  return num(meta && (meta.chartPreviousClose != null ? meta.chartPreviousClose
+           : (meta.previousClose != null ? meta.previousClose : NaN)));
 }
 
 // 코스피 지수 소스 후보(위에서부터 시도, 하나 막혀도 다음으로 폴백)
