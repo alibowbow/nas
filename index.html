@@ -1313,11 +1313,13 @@ function renderKospiIndex(){
     const live = isKospiLive();
     let delta, deltaCls = "";
     if(isFinite(pct)){
+      const flat = Math.abs(pct) < 0.005;           // 보합(반올림 0.00%) → 중립 회색
       const up = pct >= 0;
-      deltaCls = up ? "up" : "down";
-      const arrow = up ? "▲" : "▼";
-      const pctStr = "(" + (up ? "+" : "−") + Math.abs(pct).toFixed(2) + "%)";
-      delta = isFinite(chg) ? `${arrow} ${Math.abs(chg).toFixed(2)} ${pctStr}` : `${arrow} ${pctStr}`;
+      deltaCls = flat ? "" : (up ? "up" : "down");
+      const arrow = flat ? "" : (up ? "▲ " : "▼ ");
+      const sign = flat ? "" : (up ? "+" : "−");
+      const pctStr = "(" + sign + Math.abs(pct).toFixed(2) + "%)";
+      delta = isFinite(chg) ? `${arrow}${Math.abs(chg).toFixed(2)} ${pctStr}` : `${arrow}${pctStr}`;
     }else{
       delta = live ? "장중 · 실시간" : "장 마감값";   // 등락 데이터 없을 때 폴백
     }
@@ -1385,7 +1387,10 @@ async function pollNight(){
     if(!res.ok) throw new Error("HTTP " + res.status);
     const j = await res.json();
     const kv = nightNum(j.kospi);
-    if(isFinite(kv)) nightKospi = { value: kv, change: nightNum(j.kospiChange), pct: nightNum(j.kospiPct), source: j.kospiSource || "" };  // 도미넌스 분모(24h) + 일간 등락
+    if(isFinite(kv)){  // 도미넌스 분모(24h) + 일간 등락. 등락이 잠깐 비어도 직전 유효값 유지(깜빡임 방지)
+      const nc = nightNum(j.kospiChange), np = nightNum(j.kospiPct);
+      nightKospi = { value: kv, change: isFinite(nc) ? nc : nightKospi.change, pct: isFinite(np) ? np : nightKospi.pct, source: j.kospiSource || "" };
+    }
     if(inSession){
       if(j.ok === false) throw new Error(j.error || "프록시 실패");
       const last = nightNum(j.last ?? j.price ?? j.close ?? j.value);

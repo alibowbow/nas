@@ -111,14 +111,22 @@ async function fetchKospiIndex() {
   return { value, change, pct, source, attempts };
 }
 
-// 전일(직전 거래일) 종가 — 야후 ^KS11 meta.chartPreviousClose. 지수 절대레벨과 무관하게 등락 계산에만 사용.
+// 전일(직전 거래일) 종가 — 야후 ^KS11 meta.chartPreviousClose. 등락 계산에만 사용.
+// 하루 내내 거의 고정이라 아이솔레이트별 10분 캐시 → 매 폴링마다 야후 재호출/레이트리밋 방지.
+// (per-day 대신 TTL: 개장 직후 잠깐 지연된 값을 물어도 10분 내 자동 보정)
+let _ks11Prev = { at: 0, value: NaN };
+const KS11_PREV_TTL = 10 * 60 * 1000;
 async function fetchKospiPrevClose() {
+  const now = Date.now();
+  if (isFinite(_ks11Prev.value) && (now - _ks11Prev.at) < KS11_PREV_TTL) return _ks11Prev.value;
   const r = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/%5EKS11?range=1d&interval=1d",
     { headers: { "User-Agent": UA } });
   const j = await r.json();
   const meta = j && j.chart && j.chart.result && j.chart.result[0] && j.chart.result[0].meta;
-  return num(meta && (meta.chartPreviousClose != null ? meta.chartPreviousClose
+  const pv = num(meta && (meta.chartPreviousClose != null ? meta.chartPreviousClose
            : (meta.previousClose != null ? meta.previousClose : NaN)));
+  if (isFinite(pv)) _ks11Prev = { at: now, value: pv };
+  return pv;
 }
 
 // 코스피 지수 소스 후보(위에서부터 시도, 하나 막혀도 다음으로 폴백)
