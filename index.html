@@ -167,6 +167,10 @@
     #domBoard .kGrid{grid-template-columns:repeat(2, minmax(0, 220px));justify-content:start}
     #nightBoard .kGrid{grid-template-columns:repeat(auto-fit, minmax(160px, 220px));justify-content:start}
     #domBoard .kCard, #nightBoard .kCard{min-width:0}
+    /* 코스피지수·도미넌스 카드 높이 맞춤: 그리드 아이템을 플렉스로 → 카드가 행 높이(더 큰 쪽) 꽉 채움. live 라인은 하단 정렬 */
+    #domBoard .kGrid > div{display:flex}
+    #domBoard .kCard{flex:1 1 auto;display:flex;flex-direction:column}
+    #domBoard .kCard .kLive{margin-top:auto}
     @media (max-width:560px){.kGrid{grid-template-columns:1fr 1fr}}
     @media (max-width:380px){.kGrid{grid-template-columns:1fr}}
     .kCard{position:relative;border:1px solid var(--line);border-radius:var(--radius);padding:16px 16px 14px;background:var(--surface);box-shadow:var(--shadow-sm);cursor:pointer;transition:transform .12s ease, box-shadow .15s ease, border-color .15s ease}
