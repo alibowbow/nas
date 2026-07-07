@@ -228,6 +228,8 @@
     .kDelta .domShare{font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
     .kCap{font-size:11.5px;color:var(--dim);margin-top:8px}
     .kCap b{color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums}
+    .kOp{margin-top:3px}
+    .kOp .opPeriod{margin-left:5px;font-size:10.5px;color:var(--dim);font-weight:600;opacity:.85}
     .kLive{display:flex;align-items:center;gap:6px;color:var(--dim);font-size:11px;margin-top:12px;border-top:1px solid var(--line);padding-top:11px}
     /* ── 카드 이미지 공유(스크린샷) ── */
     .kTop{padding-right:28px}                 /* 우상단 공유 버튼 자리 확보 */
@@ -783,9 +785,9 @@ for(const fx of FRANKFURTER_FX){
 //   삼성·SK하이닉스는 제공해주신 DART 기준값, 마이크론·SNDK·WDC·STX는 통상치(교정 가능).
 const KOSPI_DEFS = [
   // 메모리 3사
-  { base:"SAMSUNG", krLabel:"삼성전자",   sub:"005930 · Samsung Elec.", logo:"삼성", color:"#1428A0", tvSymbol:"MEXC:SAMSUNGUSDT.P", krwScale:1, shares:5846278608, korStock:true },
+  { base:"SAMSUNG", krLabel:"삼성전자",   sub:"005930 · Samsung Elec.", logo:"삼성", color:"#1428A0", tvSymbol:"MEXC:SAMSUNGUSDT.P", krwScale:1, shares:5846278608, korStock:true, op:"89조", opPeriod:"26년 4~6월" },
   { base:"SKHYNIX", krLabel:"SK하이닉스", sub:"000660 · SK hynix",       logo:"SK",  color:"#E60012", tvSymbol:"MEXC:SKHYNIXUSDT.P", krwScale:1, shares:712702365, korStock:true },
-  { base:"MU",      krLabel:"마이크론",    sub:"MU · Micron (DRAM/낸드)", logo:"MU",  color:"#0072CE", tvSymbol:"NASDAQ:MU",          krwScale:1, shares:1121000000, mexcSymbols:["MUSTOCK_USDT"] },
+  { base:"MU",      krLabel:"마이크론",    sub:"MU · Micron (DRAM/낸드)", logo:"MU",  color:"#0072CE", tvSymbol:"NASDAQ:MU",          krwScale:1, shares:1121000000, mexcSymbols:["MUSTOCK_USDT"], op:"51조", opPeriod:"26년 3~5월" },
   // 스토리지 3대장(낸드·HDD)
   { base:"SNDK",    krLabel:"샌디스크",    sub:"SNDK · SanDisk (낸드)",   logo:"SD",  color:"#E4002B", tvSymbol:"NASDAQ:SNDK",        krwScale:1, shares:144000000 },
   { base:"WDC",     krLabel:"웨스턴디지털", sub:"WDC · Western Digital",   logo:"WD",  color:"#2B3A8F", tvSymbol:"NASDAQ:WDC",         krwScale:1, shares:348000000 },
@@ -1036,6 +1038,12 @@ function makeKospiCard(it, mode){
   if(isStock && isFinite(it.shares)){
     cap = document.createElement("div"); cap.className="kCap"; cap.innerHTML = `시총 <b>-</b>`;
   }
+  // 분기 영업이익(정적 펀더멘털) — 데이터가 있는 종목만 표시
+  let op = null;
+  if(isStock && it.op){
+    op = document.createElement("div"); op.className = "kCap kOp";
+    op.innerHTML = `영업익 <b>${it.op}</b><span class="opPeriod">${it.opPeriod || ""}</span>`;
+  }
 
   const live = document.createElement("div"); live.className="kLive";
   const ld = document.createElement("span"); ld.className="dot";
@@ -1048,6 +1056,7 @@ function makeKospiCard(it, mode){
   if(isStock) card.appendChild(usd);
   card.appendChild(delta);
   if(cap) card.appendChild(cap);
+  if(op) card.appendChild(op);
   card.appendChild(live);
   const shareBtn = document.createElement("button");
   shareBtn.className = "shareBtn"; shareBtn.type = "button";
@@ -2254,7 +2263,8 @@ function extractCardData(card){
   let cls = dEl ? (dEl.classList.contains("up") ? "up" : dEl.classList.contains("down") ? "down" : "flat") : "flat";
   let price = q(".kPrice") ? q(".kPrice").textContent.trim() : "-";
   let usd   = q(".kUsd")   ? q(".kUsd").textContent.trim()   : "";
-  let cap   = q(".kCap")   ? q(".kCap").textContent.replace(/\s+/g, " ").trim() : "";
+  let cap   = Array.from(card.querySelectorAll(".kCap"))
+                .map(el => el.textContent.replace(/\s+/g, " ").trim()).filter(Boolean).join(" · ");
   let delta = dEl ? dEl.textContent.trim() : "";
   // 도미넌스 카드처럼 .kDelta가 여러 행(.domRow)이면 포스터용으로 한 줄로 합침(삼성 … · 하이닉스 …)
   const domRows = dEl ? dEl.querySelectorAll(".domRow") : null;
