@@ -798,7 +798,8 @@ for(const k of KOSPI_DEFS){
   addInstrument({
     id:"M:"+k.base, ex:"MEXC", type:"Stock", display:k.base, label:k.base, base:k.base,
     krLabel:k.krLabel, sub:k.sub, logo:k.logo, color:k.color, tvSymbol:k.tvSymbol,
-    krwScale:k.krwScale, shares:k.shares, mexcSymbols:k.mexcSymbols, korStock:k.korStock, kospi:true
+    krwScale:k.krwScale, shares:k.shares, mexcSymbols:k.mexcSymbols, korStock:k.korStock, kospi:true,
+    op:k.op, opPeriod:k.opPeriod
   });
 }
 
