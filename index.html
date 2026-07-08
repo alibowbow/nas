@@ -1291,7 +1291,7 @@ function nightCardHTML(o){
       <div class="kLogo" style="background:#0EA5E9">선물</div>
       <div style="min-width:0">
         <div class="kName">코스피200 야간선물</div>
-        <div class="kSub">${o.sub || "KRX 야간 파생"}</div>
+        ${o.sub ? `<div class="kSub">${o.sub}</div>` : ""}
       </div>
     </div>
     <div class="kPrice${/\d/.test(String(o.price)) ? "" : " wait"}">${o.price}</div>
@@ -1338,7 +1338,7 @@ function renderNight(s){
     price: isFinite(d.last) ? fmtPrice(d.last) : "-",
     deltaText: hasChg ? (up ? "▲ " : "▼ ") + seg : "전일 대비 –",
     deltaCls: hasChg ? (up ? "up" : "down") : "",
-    sub: d.name || "KRX 야간 파생",
+    sub: "",   // 워커가 주는 이름(d.name)은 카드 제목과 중복 → 부제 생략
     live: true,
     foot: (d.time ? d.time + " · " : "") + (d.source || "프록시")
   });
