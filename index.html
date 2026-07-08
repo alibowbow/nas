@@ -785,8 +785,8 @@ for(const fx of FRANKFURTER_FX){
 //   삼성·SK하이닉스는 제공해주신 DART 기준값, 마이크론·SNDK·WDC·STX는 통상치(교정 가능).
 const KOSPI_DEFS = [
   // 메모리 3사
-  { base:"SAMSUNG", krLabel:"삼성전자",   sub:"005930 · Samsung Elec.", logo:"삼성", color:"#1428A0", tvSymbol:"MEXC:SAMSUNGUSDT.P", krwScale:1, shares:5846278608, korStock:true, op:"89조", opPeriod:"26년 4~6월" },
-  { base:"SKHYNIX", krLabel:"SK하이닉스", sub:"000660 · SK hynix",       logo:"SK",  color:"#E60012", tvSymbol:"MEXC:SKHYNIXUSDT.P", krwScale:1, shares:712702365, korStock:true },
+  { base:"SAMSUNG", krLabel:"삼성전자",   sub:"005930 · Samsung Elec.", logo:"삼성", color:"#1428A0", tvSymbol:"MEXC:SAMSUNGUSDT.P", krwScale:1, shares:5846278608, korStock:true, op:"89조", opPeriod:"26년 2분기" },
+  { base:"SKHYNIX", krLabel:"SK하이닉스", sub:"000660 · SK hynix",       logo:"SK",  color:"#E60012", tvSymbol:"MEXC:SKHYNIXUSDT.P", krwScale:1, shares:712702365, korStock:true, op:"65조", opPeriod:"26년 2분기 예상" },
   { base:"MU",      krLabel:"마이크론",    sub:"MU · Micron (DRAM/낸드)", logo:"MU",  color:"#0072CE", tvSymbol:"NASDAQ:MU",          krwScale:1, shares:1121000000, mexcSymbols:["MUSTOCK_USDT"], op:"51조", opPeriod:"26년 3~5월" },
   // 스토리지 3대장(낸드·HDD)
   { base:"SNDK",    krLabel:"샌디스크",    sub:"SNDK · SanDisk (낸드)",   logo:"SD",  color:"#E4002B", tvSymbol:"NASDAQ:SNDK",        krwScale:1, shares:144000000 },
@@ -1043,7 +1043,7 @@ function makeKospiCard(it, mode){
   let op = null;
   if(isStock && it.op){
     op = document.createElement("div"); op.className = "kCap kOp";
-    op.innerHTML = `영업익 <b>${it.op}</b><span class="opPeriod">${it.opPeriod || ""}</span>`;
+    op.innerHTML = `영업이익 <b>${it.op}</b><span class="opPeriod">${it.opPeriod || ""}</span>`;
   }
 
   const live = document.createElement("div"); live.className="kLive";
