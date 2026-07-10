@@ -131,10 +131,11 @@
     .btn.icon{padding:8px 11px;font-size:15px;line-height:1;display:inline-flex;align-items:center;justify-content:center}
     .filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .pill{
-      padding:8px 14px;border-radius:999px;border:1px solid var(--line);
+      display:inline-flex;align-items:center;gap:7px;padding:6px 12px 6px 7px;border-radius:999px;border:1px solid var(--line);
       background:var(--surface-2);color:var(--muted);font-size:12.5px;font-weight:600;cursor:pointer;user-select:none;
       transition:background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), transform .1s var(--ease);
     }
+    .filterIcon{width:22px;height:22px;object-fit:contain;flex:0 0 auto}
     .pill:hover{background:var(--surface-hover);color:var(--text)}
     .pill:active{transform:scale(.96)}
     .pill.on{color:var(--brand);border-color:var(--brand-line);background:var(--brand-soft);box-shadow:inset 0 1px 0 var(--edge)}
@@ -189,6 +190,7 @@
     /* KOSPI board */
     .kospiBoard{margin-top:24px}
     .kospiHead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:2px 2px 14px}
+    .kospiHead .sectionIcon{width:31px;height:31px;object-fit:contain;flex:0 0 auto}
     .kospiHead h2{margin:0;font-size:17px;font-weight:800;letter-spacing:-.02em;position:relative;padding-left:12px}
     .kospiHead h2::before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);width:4px;height:16px;border-radius:2px;background:linear-gradient(180deg,var(--title-1),var(--title-2))}
     .kospiHead .badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;border:1px solid var(--ko-up);color:var(--ko-up);background:transparent}
@@ -204,7 +206,9 @@
     #domBoard .kCard .kLive{margin-top:auto}
     @media (max-width:560px){.kGrid{grid-template-columns:1fr 1fr}}
     @media (max-width:380px){.kGrid{grid-template-columns:1fr}}
-    .kCard{position:relative;border:1px solid var(--line);border-radius:var(--radius);padding:18px 18px 16px;background:var(--surface);box-shadow:inset 0 1px 0 var(--edge), var(--shadow-sm);cursor:pointer;transition:transform var(--dur-1) var(--ease-out), box-shadow var(--dur-2) var(--ease), border-color var(--dur-1) var(--ease)}
+    .kCard{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:var(--radius);padding:18px 18px 16px;background:var(--surface);box-shadow:inset 0 1px 0 var(--edge), var(--shadow-sm);cursor:pointer;transition:transform var(--dur-1) var(--ease-out), box-shadow var(--dur-2) var(--ease), border-color var(--dur-1) var(--ease)}
+    .kCard.asset-card::after{content:"";position:absolute;right:-22px;bottom:-22px;z-index:0;width:118px;height:118px;background:var(--asset-icon) center/contain no-repeat;opacity:.075;pointer-events:none}
+    .kCard.asset-card > :not(.shareBtn){position:relative;z-index:1}
     .kCard:hover{transform:translateY(-2px);box-shadow:inset 0 1px 0 var(--edge), var(--shadow);border-color:var(--line-2)}
     .kCard:active{transform:translateY(0) scale(.995);transition-duration:.08s}
     .kCard.index{background:linear-gradient(165deg, rgba(59,130,246,.16), rgba(59,130,246,0) 62%), var(--surface);border-color:rgba(59,130,246,.30)}
@@ -262,9 +266,12 @@
     .shareClose{width:32px;height:32px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
     .shareClose:hover{color:var(--text);background:var(--surface-hover)}
     .sharePosterWrap{display:flex;justify-content:center}
-    .sharePoster{width:min(336px,84vw);box-sizing:border-box;border-radius:20px;padding:24px 22px 18px;position:relative;overflow:hidden;font-variant-numeric:tabular-nums}
+    .sharePoster{width:min(336px,84vw);box-sizing:border-box;border-radius:20px;padding:24px 22px 18px;position:relative;isolation:isolate;overflow:hidden;font-variant-numeric:tabular-nums}
     .sharePoster.dark{background:linear-gradient(160deg,#18243d 0%,#0c1220 55%,#080d17 100%);color:#EAF0FA}
     .sharePoster.light{background:linear-gradient(180deg,#ffffff,#eff3f8);color:#0E1520;box-shadow:inset 0 0 0 1px #e4e9f0}
+    .spAsset{position:absolute;z-index:0;right:-34px;top:72px;width:196px;height:196px;object-fit:contain;opacity:.10;filter:saturate(.88);pointer-events:none}
+    .sharePoster.light .spAsset{opacity:.11}
+    .sharePoster > :not(.spAsset){position:relative;z-index:1}
     .spTop{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:700;letter-spacing:.01em}
     .sharePoster.dark .spTop{color:#93a5c0}
     .sharePoster.light .spTop{color:#6b7688}
@@ -388,15 +395,15 @@
       </div>
 
       <div class="filters">
-        <div class="pill on" id="filterAll">전체</div>
-        <div class="pill" id="filterKor">코스피</div>
-        <div class="pill" id="filterKospi">메모리</div>
-        <div class="pill" id="filterCrypto">크립토</div>
-        <div class="pill" id="filterStock">주식</div>
-        <div class="pill" id="filterIndex">지수/ETF</div>
-        <div class="pill" id="filterFX">FX</div>
-        <div class="pill" id="filterCommo">원자재/금속</div>
-        <div class="pill" id="filterEnergy">에너지</div>
+        <div class="pill on" id="filterAll"><img class="filterIcon" src="assets/icons/all.png" alt="" aria-hidden="true" />전체</div>
+        <div class="pill" id="filterKor"><img class="filterIcon" src="assets/icons/korea.png" alt="" aria-hidden="true" />코스피</div>
+        <div class="pill" id="filterKospi"><img class="filterIcon" src="assets/icons/memory.png" alt="" aria-hidden="true" />메모리</div>
+        <div class="pill" id="filterCrypto"><img class="filterIcon" src="assets/icons/crypto.png" alt="" aria-hidden="true" />크립토</div>
+        <div class="pill" id="filterStock"><img class="filterIcon" src="assets/icons/stocks.png" alt="" aria-hidden="true" />주식</div>
+        <div class="pill" id="filterIndex"><img class="filterIcon" src="assets/icons/index.png" alt="" aria-hidden="true" />지수/ETF</div>
+        <div class="pill" id="filterFX"><img class="filterIcon" src="assets/icons/fx.png" alt="" aria-hidden="true" />FX</div>
+        <div class="pill" id="filterCommo"><img class="filterIcon" src="assets/icons/commodities.png" alt="" aria-hidden="true" />원자재/금속</div>
+        <div class="pill" id="filterEnergy"><img class="filterIcon" src="assets/icons/energy.png" alt="" aria-hidden="true" />에너지</div>
       </div>
 
       <div class="subfilters" id="stockSub"></div>
@@ -421,6 +428,7 @@
     <!-- KOSPI BOARD -->
     <section class="kospiBoard" id="kospiBoard">
       <div class="kospiHead">
+        <img class="sectionIcon" src="assets/icons/memory.png" alt="" aria-hidden="true" />
         <h2>메모리 보드</h2>
         <span class="badge">메모리·스토리지</span>
         <span class="src" id="kospiSrc">USD/KRW 환산</span>
@@ -437,6 +445,7 @@
     <!-- 코스피 지수 + 삼전하닉 도미넌스 (24시간 지표 · 넓으면 2열) -->
     <section class="kospiBoard" id="domBoard" style="display:none">
       <div class="kospiHead">
+        <img class="sectionIcon" src="assets/icons/korea.png" alt="" aria-hidden="true" />
         <h2>코스피 지수 · 도미넌스</h2>
         <span class="badge">종합지수 · 반도체 비중</span>
         <span class="src" id="domSrc">-</span>
@@ -448,6 +457,7 @@
     <!-- 코스피200 야간선물 (KRX 야간 세션 · Cloudflare Worker 프록시 경유) -->
     <section class="kospiBoard" id="nightBoard" style="display:none">
       <div class="kospiHead">
+        <img class="sectionIcon" src="assets/icons/index.png" alt="" aria-hidden="true" />
         <h2>코스피200 야간선물</h2>
         <span class="badge">KRX 야간 18:00~06:00</span>
         <span class="src" id="nightSrc">연결 대기</span>
@@ -1030,6 +1040,10 @@ function makeKospiCard(it, mode){
   const card = document.createElement("div");
   card.className = "kCard" + (isStock ? "" : " index");
   card.dataset.instId = it.id;   // 공유 포스터가 앱 데이터모델(lastValue)에서 직접 시세를 읽을 수 있게
+  const assetKey = it.kospiIndex ? "index" : "memory";
+  card.classList.add("asset-card");
+  card.dataset.asset = assetKey;
+  card.style.setProperty("--asset-icon", `url("assets/icons/${assetKey}.png")`);
 
   const top = document.createElement("div"); top.className="kTop";
   if(it.logo || isStock){
@@ -1328,7 +1342,7 @@ const nightNum = (x) => {
   return isFinite(n) ? n : NaN;
 };
 function nightCardHTML(o){
-  return `<div class="kCard index" style="cursor:default">${SHARE_BTN}
+  return `<div class="kCard index asset-card" data-asset="korea" style="--asset-icon:url('assets/icons/korea.png');cursor:default">${SHARE_BTN}
     <div class="kTop">
       <div class="kLogo" style="background:#0EA5E9">선물</div>
       <div style="min-width:0">
@@ -1388,7 +1402,7 @@ function renderNight(s){
 }
 /* ===== 삼전하닉 도미넌스 카드 ===== */
 function domCardHTML(o){
-  return `<div class="kCard index" style="cursor:default">${SHARE_BTN}
+  return `<div class="kCard index asset-card" data-asset="memory" style="--asset-icon:url('assets/icons/memory.png');cursor:default">${SHARE_BTN}
     <div class="kTop">
       <div class="kLogo" style="background:#7C3AED">반도체</div>
       <div style="min-width:0">
@@ -1403,7 +1417,7 @@ function domCardHTML(o){
 }
 // 코스피 종합지수 카드 (워커가 준 nightKospi 값 표시). 장중 실시간 / 마감 후 마감값 고정.
 function kospiIdxCardHTML(o){
-  return `<div class="kCard index" style="cursor:default">${SHARE_BTN}
+  return `<div class="kCard index asset-card" data-asset="index" style="--asset-icon:url('assets/icons/index.png');cursor:default">${SHARE_BTN}
     <div class="kTop">
       <div class="kLogo" style="background:#0F766E">KS</div>
       <div style="min-width:0">
@@ -2306,6 +2320,7 @@ function hasNum(s){ return /\d/.test(s || ""); }
 function extractCardData(card){
   const q = s => card.querySelector(s);
   const dEl = q(".kDelta"), logo = q(".kLogo"), live = q(".kLive span:last-child");
+  const assetKey = /^(all|korea|memory|crypto|stocks|index|fx|commodities|energy)$/.test(card.dataset.asset || "") ? card.dataset.asset : "all";
   let cls = dEl ? (dEl.classList.contains("up") ? "up" : dEl.classList.contains("down") ? "down" : "flat") : "flat";
   let price = q(".kPrice") ? q(".kPrice").textContent.trim() : "-";
   let usd   = q(".kUsd")   ? q(".kUsd").textContent.trim()   : "";
@@ -2358,6 +2373,7 @@ function extractCardData(card){
     delta: hasNum(delta) ? delta : "",   // "전일 대비 –" 같은 대기 문구 제외
     deltaCls: cls,
     live:  live ? live.textContent.trim() : "",
+    assetKey,
     logoText: logo ? logo.textContent.trim() : "•",
     logoBg:   logo ? (logo.style.background || getComputedStyle(logo).backgroundColor || "#334155") : "#334155"
   };
@@ -2373,6 +2389,7 @@ function fmtPosterPrice(txt){ return escapeHtml(txt).replace(/^([₩$])\s*/, '<s
 function buildPosterHTML(d, theme){
   const meta = [d.usd, d.cap].filter(Boolean).join("  ·  ");
   return `<div class="sharePoster ${theme}">
+    <img class="spAsset" src="assets/icons/${escapeHtml(d.assetKey)}.png" alt="" aria-hidden="true" />
     <div class="spTop"><span class="spDate">${escapeHtml(posterDateKST())}</span><span class="spBrand">마켓 라이브 <b>◆</b></span></div>
     <div class="spId">
       <span class="spLogo" style="background:${escapeHtml(d.logoBg)}">${escapeHtml(d.logoText)}</span>
