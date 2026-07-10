@@ -233,6 +233,9 @@
     .kCap b{color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums}
     .kOp{margin-top:3px}
     .kOp .opPeriod{margin-left:5px;font-size:10.5px;color:var(--dim);font-weight:600;opacity:.85}
+    .kPrem{margin-top:3px}
+    .kPrem b.pUp{color:var(--ko-up)}
+    .kPrem b.pDn{color:var(--ko-down)}
     .kLive{display:flex;align-items:center;gap:6px;color:var(--dim);font-size:11px;margin-top:12px;border-top:1px solid var(--line);padding-top:11px}
     /* ── 카드 이미지 공유(스크린샷) ── */
     .kTop{padding-right:28px}                 /* 우상단 공유 버튼 자리 확보 */
@@ -790,6 +793,8 @@ const KOSPI_DEFS = [
   // 메모리 3사
   { base:"SAMSUNG", krLabel:"삼성전자",   sub:"005930 · Samsung Elec.", logo:"삼성", color:"#1428A0", tvSymbol:"MEXC:SAMSUNGUSDT.P", krwScale:1, shares:5846278608, korStock:true, op:"89조", opPeriod:"26년 2분기" },
   { base:"SKHYNIX", krLabel:"SK하이닉스", sub:"000660 · SK hynix",       logo:"SK",  color:"#E60012", tvSymbol:"MEXC:SKHYNIXUSDT.P", krwScale:1, shares:712702365, korStock:true, op:"65조", opPeriod:"26년 2분기 예상" },
+  // SK하이닉스 ADR(나스닥) — 본주 1주 = ADR 10주(10:1 분할상장). 물량 = 본주의 2.5% → ADR 주수 = 712,702,365 × 2.5% × 10
+  { base:"SKHY",    krLabel:"SK하이닉스 ADR", sub:"SKHY · Nasdaq ADR (본주 1/10)", logo:"ADR", color:"#E60012", tvSymbol:"MEXC:SKHYUSDT.P", krwScale:1, shares:178175590, mexcSymbols:["SKHY_USDT","SKHYUSDT","SKHYSTOCK_USDT"], premiumVs:"M:SKHYNIX", premiumRatio:10 },
   { base:"MU",      krLabel:"마이크론",    sub:"MU · Micron (DRAM/낸드)", logo:"MU",  color:"#0072CE", tvSymbol:"NASDAQ:MU",          krwScale:1, shares:1121000000, mexcSymbols:["MUSTOCK_USDT"], op:"51조", opPeriod:"26년 3~5월" },
   // 스토리지 3대장(낸드·HDD)
   { base:"SNDK",    krLabel:"샌디스크",    sub:"SNDK · SanDisk (낸드)",   logo:"SD",  color:"#E4002B", tvSymbol:"NASDAQ:SNDK",        krwScale:1, shares:144000000 },
@@ -802,7 +807,7 @@ for(const k of KOSPI_DEFS){
     id:"M:"+k.base, ex:"MEXC", type:"Stock", display:k.base, label:k.base, base:k.base,
     krLabel:k.krLabel, sub:k.sub, logo:k.logo, color:k.color, tvSymbol:k.tvSymbol,
     krwScale:k.krwScale, shares:k.shares, mexcSymbols:k.mexcSymbols, korStock:k.korStock, kospi:true,
-    op:k.op, opPeriod:k.opPeriod
+    op:k.op, opPeriod:k.opPeriod, premiumVs:k.premiumVs, premiumRatio:k.premiumRatio
   });
 }
 
@@ -822,7 +827,7 @@ addInstrument({
 
 /* ===== 주식 하위 분류(섹터) — '주식' 탭에서 2차 필터로 노출 ===== */
 const STOCK_GROUPS = [
-  { key:"memory",     label:"메모리",        bases:["SAMSUNG","SKHYNIX","MU","SNDK","WDC","STX"] },
+  { key:"memory",     label:"메모리",        bases:["SAMSUNG","SKHYNIX","SKHY","MU","SNDK","WDC","STX"] },
   { key:"logic",      label:"CPU·GPU",      bases:["AMD","INTC","ARM","QCOM","AVGO","TSM","ON","TXN","ADI","MCHP"] },
   { key:"semieq",     label:"반도체",        bases:["ASML","AMAT","LRCX","KLAC","TER","SMCI","NVTS"] },
   { key:"optical",    label:"광통신·네트워크", bases:["GLW","LITE","NOK","COHR","CIEN","ANET","JNPR","CSCO","MRVL","ALAB","POET"] },
@@ -851,7 +856,7 @@ const ASSET_NAMES = {
   ARM:"Arm Holdings", TSM:"TSMC", ASML:"ASML", AMAT:"Applied Materials", LRCX:"Lam Research",
   KLAC:"KLA", TER:"Teradyne", MRVL:"Marvell", ADI:"Analog Devices", TXN:"Texas Instruments",
   MCHP:"Microchip", ON:"onsemi", SMCI:"Super Micro", ALAB:"Astera Labs", MU:"Micron", NVTS:"Navitas Semiconductor",
-  SNDK:"SanDisk", WDC:"Western Digital", STX:"Seagate", SAMSUNG:"Samsung Electronics", SKHYNIX:"SK hynix",
+  SNDK:"SanDisk", WDC:"Western Digital", STX:"Seagate", SAMSUNG:"Samsung Electronics", SKHYNIX:"SK hynix", SKHY:"SK hynix ADR",
   // 양자·우주
   IONQ:"IonQ", QBTS:"D-Wave Quantum", RGTI:"Rigetti Computing", INFQ:"Infleqtion", RDW:"Redwire", LUNR:"Intuitive Machines", ASTS:"AST SpaceMobile",
   // 광통신·네트워크
@@ -1048,6 +1053,12 @@ function makeKospiCard(it, mode){
     op = document.createElement("div"); op.className = "kCap kOp";
     op.innerHTML = `영업이익 <b>${it.op}</b><span class="opPeriod">${it.opPeriod || ""}</span>`;
   }
+  // 본주 대비 나스닥 프리미엄(ADR): premiumVs = 본주 인스트루먼트 id, premiumRatio = 본주 1주당 ADR 수
+  let prem = null;
+  if(isStock && it.premiumVs){
+    prem = document.createElement("div"); prem.className = "kCap kPrem";
+    prem.innerHTML = `본주 대비 프리미엄 <b>-</b>`;
+  }
 
   const live = document.createElement("div"); live.className="kLive";
   const ld = document.createElement("span"); ld.className="dot";
@@ -1061,6 +1072,7 @@ function makeKospiCard(it, mode){
   card.appendChild(delta);
   if(cap) card.appendChild(cap);
   if(op) card.appendChild(op);
+  if(prem) card.appendChild(prem);
   card.appendChild(live);
   const shareBtn = document.createElement("button");
   shareBtn.className = "shareBtn"; shareBtn.type = "button";
@@ -1069,7 +1081,7 @@ function makeKospiCard(it, mode){
   card.appendChild(shareBtn);
   card.addEventListener("click", ()=> openTradingView(it));
 
-  kospiCardEls.set(it.id, { priceEl:price, usdEl:usd, deltaEl:delta, capEl:cap, dotEl:ld, mode, def:it });
+  kospiCardEls.set(it.id, { priceEl:price, usdEl:usd, deltaEl:delta, capEl:cap, premEl:prem, dotEl:ld, mode, def:it });
   return card;
 }
 
@@ -1136,6 +1148,19 @@ function updateKospiCard(id){
       : `시총 <b>-</b>`;
   }
 
+  // 본주 대비 나스닥 프리미엄(ADR) = ADR가격 × 비율(본주 1주당 ADR 수) ÷ 본주가격 − 1. 둘 다 MEXC USDT라 환율 무관.
+  if(c.premEl){
+    const ref = lastValue.get(c.def.premiumVs);
+    const ratio = c.def.premiumRatio || 1;
+    if(ref && isFinite(ref.last) && ref.last > 0){
+      const prem = (usd * ratio / ref.last - 1) * 100;
+      const up = prem >= 0;
+      c.premEl.innerHTML = `본주 대비 프리미엄 <b class="${up ? "pUp" : "pDn"}">${up ? "+" : "−"}${Math.abs(prem).toFixed(2)}%</b>`;
+    }else{
+      c.premEl.innerHTML = `본주 대비 프리미엄 <b>-</b>`;
+    }
+  }
+
   if(isFinite(v.pct)){
     const up = v.pct >= 0;
     let amt = "";
@@ -1150,6 +1175,9 @@ function updateKospiCard(id){
     c.deltaEl.textContent = "전일 대비 –";
     c.deltaEl.className = "kDelta";
   }
+
+  // 본주(하이닉스) 틱 때 ADR 카드의 프리미엄도 함께 갱신 (역방향 재귀 없음)
+  if(id === "M:SKHYNIX" && kospiCardEls.has("M:SKHY")) updateKospiCard("M:SKHY");
 }
 function updateAllKospiCards(){
   for(const id of kospiCardEls.keys()) updateKospiCard(id);
