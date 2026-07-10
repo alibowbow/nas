@@ -794,20 +794,20 @@ const KOSPI_DEFS = [
   { base:"SAMSUNG", krLabel:"삼성전자",   sub:"005930 · Samsung Elec.", logo:"삼성", color:"#1428A0", tvSymbol:"MEXC:SAMSUNGUSDT.P", krwScale:1, shares:5846278608, korStock:true, op:"89조", opPeriod:"26년 2분기" },
   { base:"SKHYNIX", krLabel:"SK하이닉스", sub:"000660 · SK hynix",       logo:"SK",  color:"#E60012", tvSymbol:"MEXC:SKHYNIXUSDT.P", krwScale:1, shares:712702365, korStock:true, op:"65조", opPeriod:"26년 2분기 예상" },
   // SK하이닉스 ADR(나스닥) — 본주 1주 = ADR 10주(10:1 분할상장). 물량 = 본주의 2.5% → ADR 주수 = 712,702,365 × 2.5% × 10
-  { base:"SKHY",    krLabel:"SK하이닉스 ADR", sub:"SKHY · Nasdaq ADR", logo:"ADR", color:"#E60012", tvSymbol:"MEXC:SKHYUSDT.P", krwScale:1, shares:178175590, mexcSymbols:["SKHY_USDT","SKHYUSDT","SKHYSTOCK_USDT"], premiumVs:"M:SKHYNIX", premiumRatio:10 },
-  { base:"MU",      krLabel:"마이크론",    sub:"MU · Micron (DRAM/낸드)", logo:"MU",  color:"#0072CE", tvSymbol:"NASDAQ:MU",          krwScale:1, shares:1121000000, mexcSymbols:["MUSTOCK_USDT"], op:"51조", opPeriod:"26년 3~5월" },
+  { base:"SKHY",    krLabel:"SK하이닉스 ADR", sub:"SKHY · Nasdaq ADR", logo:"ADR", color:"#E60012", tvSymbol:"MEXC:SKHYUSDT.P", krwScale:1, shares:178175590, usdMain:true, mexcSymbols:["SKHY_USDT","SKHYUSDT","SKHYSTOCK_USDT"], premiumVs:"M:SKHYNIX", premiumRatio:10 },
+  { base:"MU",      krLabel:"마이크론",    sub:"MU · Micron (DRAM/낸드)", logo:"MU",  color:"#0072CE", tvSymbol:"NASDAQ:MU",          krwScale:1, shares:1121000000, usdMain:true, mexcSymbols:["MUSTOCK_USDT"], op:"51조", opPeriod:"26년 3~5월" },
   // 스토리지 3대장(낸드·HDD)
-  { base:"SNDK",    krLabel:"샌디스크",    sub:"SNDK · SanDisk (낸드)",   logo:"SD",  color:"#E4002B", tvSymbol:"NASDAQ:SNDK",        krwScale:1, shares:144000000 },
-  { base:"WDC",     krLabel:"웨스턴디지털", sub:"WDC · Western Digital",   logo:"WD",  color:"#2B3A8F", tvSymbol:"NASDAQ:WDC",         krwScale:1, shares:348000000 },
+  { base:"SNDK",    krLabel:"샌디스크",    sub:"SNDK · SanDisk (낸드)",   logo:"SD",  color:"#E4002B", tvSymbol:"NASDAQ:SNDK",        krwScale:1, shares:144000000, usdMain:true },
+  { base:"WDC",     krLabel:"웨스턴디지털", sub:"WDC · Western Digital",   logo:"WD",  color:"#2B3A8F", tvSymbol:"NASDAQ:WDC",         krwScale:1, shares:348000000, usdMain:true },
   // STX는 스택스(암호화폐)와 티커 충돌 → 시게이트 주식 계약에만 고정(STXSTOCK_USDT)
-  { base:"STX",     krLabel:"씨게이트",    sub:"STX · Seagate (HDD)",     logo:"ST",  color:"#6EBE49", tvSymbol:"NASDAQ:STX",         krwScale:1, shares:212000000, mexcSymbols:["STXSTOCK_USDT"] },
+  { base:"STX",     krLabel:"씨게이트",    sub:"STX · Seagate (HDD)",     logo:"ST",  color:"#6EBE49", tvSymbol:"NASDAQ:STX",         krwScale:1, shares:212000000, usdMain:true, mexcSymbols:["STXSTOCK_USDT"] },
 ];
 for(const k of KOSPI_DEFS){
   addInstrument({
     id:"M:"+k.base, ex:"MEXC", type:"Stock", display:k.base, label:k.base, base:k.base,
     krLabel:k.krLabel, sub:k.sub, logo:k.logo, color:k.color, tvSymbol:k.tvSymbol,
     krwScale:k.krwScale, shares:k.shares, mexcSymbols:k.mexcSymbols, korStock:k.korStock, kospi:true,
-    op:k.op, opPeriod:k.opPeriod, premiumVs:k.premiumVs, premiumRatio:k.premiumRatio
+    op:k.op, opPeriod:k.opPeriod, premiumVs:k.premiumVs, premiumRatio:k.premiumRatio, usdMain:k.usdMain
   });
 }
 
@@ -1039,8 +1039,8 @@ function makeKospiCard(it, mode){
   top.appendChild(nameWrap);
 
   const price = document.createElement("div"); price.className="kPrice";
-  price.innerHTML = isStock ? `<span class="won">₩</span>-` : "-";
-  const usd = document.createElement("div"); usd.className="kUsd"; usd.textContent = isStock ? "$ -" : "";
+  price.innerHTML = isStock ? `<span class="won">${it.usdMain ? "$" : "₩"}</span>-` : "-";
+  const usd = document.createElement("div"); usd.className="kUsd"; usd.textContent = isStock ? (it.usdMain ? "₩ -" : "$ -") : "";
   const delta = document.createElement("div"); delta.className="kDelta"; delta.textContent = "전일 대비 –";
 
   let cap = null;
@@ -1131,12 +1131,17 @@ function updateKospiCard(id){
 
   const scale = c.def.krwScale || 1;
   const usd = v.last;
-  c.usdEl.textContent = "$ " + fmtPrice(usd) + " USD";
-
-  if(isFinite(fx)){
-    c.priceEl.innerHTML = `<span class="won">₩</span>` + fmtKRW(usd * fx * scale);
+  if(c.def.usdMain){
+    // 미국 상장(ADR·MU 등): 달러가 메인, 원화 환산이 서브
+    c.priceEl.innerHTML = `<span class="won">$</span>` + fmtPrice(usd);
+    c.usdEl.textContent = isFinite(fx) ? "₩ " + fmtKRW(usd * fx * scale) : "₩ -";
   }else{
-    c.priceEl.innerHTML = `<span class="won">₩</span>-`;
+    c.usdEl.textContent = "$ " + fmtPrice(usd) + " USD";
+    if(isFinite(fx)){
+      c.priceEl.innerHTML = `<span class="won">₩</span>` + fmtKRW(usd * fx * scale);
+    }else{
+      c.priceEl.innerHTML = `<span class="won">₩</span>-`;
+    }
   }
 
   // 시총 = 원화 추정가 × 발행주식수 (라이브)
@@ -1165,7 +1170,10 @@ function updateKospiCard(id){
     const up = v.pct >= 0;
     let amt = "";
     const dayOpen = dailyOpenById.get(id);
-    if(isFinite(fx) && isFinite(dayOpen) && dayOpen > 0){
+    if(c.def.usdMain && isFinite(dayOpen) && dayOpen > 0){
+      const amtUsd = usd - dayOpen;
+      amt = " · " + (amtUsd >= 0 ? "+" : "−") + "$" + fmtPrice(Math.abs(amtUsd));
+    }else if(isFinite(fx) && isFinite(dayOpen) && dayOpen > 0){
       const amtKrw = (usd - dayOpen) * fx * scale;
       amt = " · " + (amtKrw >= 0 ? "+" : "−") + fmtKRW(Math.abs(amtKrw)) + "원";
     }
