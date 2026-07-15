@@ -71,6 +71,7 @@
     }
     *{box-sizing:border-box}
     html{-webkit-tap-highlight-color:transparent;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
+    html,body{height:100%;overflow:hidden;overscroll-behavior:none}
     ::selection{background:var(--sel-bg);color:var(--sel-text)}
     :focus-visible{outline:2px solid var(--brand);outline-offset:2px}
     ::-webkit-scrollbar{width:10px;height:10px}
@@ -91,7 +92,8 @@
       font-variant-numeric:tabular-nums lining-nums;
       transition:background-color .3s ease, color .2s ease;
     }
-    .wrap{max-width:1200px;margin:0 auto;padding:24px 16px 64px}
+    /* 문서(body) 대신 앱 영역만 스크롤해 모바일 브라우저 주소창이 접히지 않게 유지 */
+    .wrap{max-width:1200px;height:100%;height:100dvh;margin:0 auto;padding:24px 16px 64px;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
     .top{
       position:relative;
       display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;
