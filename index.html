@@ -336,22 +336,26 @@
       .chg{justify-self:end}.vol{justify-self:end}
       #tvChart{height:70vh;min-height:480px}
     }
-    /* 차트 화면: 전체화면 고정 오버레이 + 페이지 스크롤 잠금 (모바일에서 주소창 토글/스크롤 방지) */
-    body.tv-open{overflow:hidden;overscroll-behavior:none;}
-    /* #tvView: 화면 전체를 덮는 고정 오버레이. position:fixed 이므로 자식 absolute 요소들의 컨테이닝 블록이 됨.
-       JS가 인라인 display:block 을 걸어도 무관 — 아래 레이아웃은 flex/grid 에 의존하지 않고 오프셋(inset)으로 높이를 확정 */
-    body.tv-open #tvView{position:fixed;inset:0;z-index:1000;margin:0;height:100vh;height:100dvh;background:var(--bg);overscroll-behavior:none;}
+    /* 차트 화면: 루트부터 TradingView iframe까지 한 뷰포트에 고정.
+       교차 출처 iframe의 세로 제스처가 모바일 브라우저 주소창을 접지 않도록 기본 스크롤/오버스크롤을 모두 차단한다. */
+    html.tv-open{overflow:hidden;overscroll-behavior:none;}
+    body.tv-open{position:fixed;inset:0;width:100%;height:100%;height:100svh;overflow:hidden;overscroll-behavior:none;touch-action:none;}
+    body.tv-open .wrap{height:100%;height:100svh;overflow:hidden;overscroll-behavior:none;}
+    /* #tvView: 주소창이 포함된 작은 뷰포트(svh)를 기준으로 고정해 동적 뷰포트 리사이즈도 막는다. */
+    body.tv-open #tvView{position:fixed;inset:0;z-index:1000;margin:0;height:100%;height:100svh;max-height:100svh;overflow:hidden;background:var(--bg);overscroll-behavior:none;touch-action:none;}
     /* 상단 '뒤로' 바: 높이를 48px 로 고정 → 아래 #tvBox 의 top 오프셋이 확정값이 됨. nowrap 로 줄바꿈 방지 */
     body.tv-open .top{height:48px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;flex-wrap:nowrap;overflow:hidden;margin:0;padding:0 14px;border:0;border-radius:0;box-shadow:none;background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;border-bottom:1px solid var(--line);}
     body.tv-open .top .sub{display:none;}
     body.tv-open .title h1{font-size:15px;font-weight:800;}
     /* #tvBox: 절대배치 top=배너높이(48px), bottom:0 → 높이 = (뷰포트-48px) 확정 픽셀값 (flex/percent 의존 없음) */
-    body.tv-open #tvBox{position:absolute;left:0;right:0;top:48px;bottom:0;margin:0;border:0;border-radius:0;box-shadow:none;overflow:hidden;background:var(--surface);}
+    body.tv-open #tvBox{position:absolute;left:0;right:0;top:48px;bottom:0;margin:0;border:0;border-radius:0;box-shadow:none;overflow:hidden;background:var(--surface);overscroll-behavior:none;touch-action:none;}
     /* #tvHeader: 종목명 바, 높이 44px 고정 → 아래 #tvChart top 오프셋 확정 */
     body.tv-open #tvHeader{height:44px;box-sizing:border-box;padding:0 16px;flex-wrap:nowrap;overflow:hidden;}
     /* #tvChart: 절대배치 top=헤더높이(44px), bottom:0 → 높이 = (뷰포트-48-44) 확정 픽셀값.
-       JS가 만든 컨테이너 div(position:absolute;inset:0)가 이 확정 영역을 그대로 채움 → 붕괴/잘림 불가능 */
-    body.tv-open #tvChart{position:absolute;left:0;right:0;top:44px;bottom:0;height:auto;min-height:0;}
+       TradingView의 JS 포인터 동작은 유지하면서 브라우저의 기본 터치 스크롤만 억제한다. */
+    body.tv-open #tvChart{position:absolute;left:0;right:0;top:44px;bottom:0;height:auto;min-height:0;overflow:hidden;overscroll-behavior:none;touch-action:none;}
+    body.tv-open #tvChart #tv_chart_container,
+    body.tv-open #tvChart iframe{overflow:hidden;overscroll-behavior:none;touch-action:none;}
 
     /* ── 마감 디테일: 한국어 줄바꿈 · 아이콘 · 감약 모션 ── */
     .title .sub,.note,#toast,.kospiHead .badge,#tvSubtitle{word-break:keep-all;overflow-wrap:break-word}
@@ -2217,7 +2221,8 @@ async function openTradingView(it){
 
   listView.style.display = "none";
   tvView.style.display = "block";
-  document.body.classList.add("tv-open");   // 차트 화면: 페이지 스크롤 잠금(모바일 주소창 안정)
+  document.documentElement.classList.add("tv-open");
+  document.body.classList.add("tv-open");   // 차트 화면: 루트/페이지/iframe 스크롤 잠금(모바일 주소창 안정)
   tvTitle.textContent = `${it.krLabel || it.display}`;
   tvSubtitle.textContent = `${it.ex} · ${symbol}`;
 
@@ -2266,6 +2271,7 @@ async function openTradingView(it){
 function goBack(){
   tvView.style.display = "none";
   listView.style.display = "block";
+  document.documentElement.classList.remove("tv-open");
   document.body.classList.remove("tv-open");
 }
 // 인앱 '뒤로'/ESC는 history.back()을 호출 → popstate에서 goBack 실행(휴대폰 뒤로가기와 동일 동작)
