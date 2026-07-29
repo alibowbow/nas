@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>메모리 보드 · TradFi/Crypto Live (MEXC · Hyperliquid · Binance)</title>
   <meta name="theme-color" content="#0B0E15" media="(prefers-color-scheme: dark)" />
   <meta name="theme-color" content="#EEF1F5" media="(prefers-color-scheme: light)" />
@@ -93,7 +93,7 @@
       transition:background-color .3s ease, color .2s ease;
     }
     /* 문서(body) 대신 앱 영역만 스크롤해 모바일 브라우저 주소창이 접히지 않게 유지 */
-    .wrap{max-width:1200px;height:100%;height:100dvh;margin:0 auto;padding:24px 16px 64px;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
+    .wrap{--dock-h:0px;max-width:1200px;height:100%;height:100dvh;margin:0 auto;padding:max(24px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(64px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
     .top{
       position:relative;
       display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;
@@ -109,8 +109,13 @@
       background:linear-gradient(100deg, var(--title-1), var(--title-2));
       -webkit-background-clip:text;background-clip:text;color:transparent;}
     .title .sub{color:var(--muted);font-size:12.5px;line-height:1.45;max-width:640px}
-    .status{display:flex;gap:12px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:12.5px;}
+    .status{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:12.5px;}
     .status b{color:var(--text);font-weight:600}
+    .feedChip{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:4px 9px;border:1px solid var(--line);border-radius:999px;background:var(--surface-2);white-space:nowrap}
+    .feedState{font-size:10.5px;color:var(--dim);font-weight:650}
+    .feedChip[data-state="live"] .feedState{color:var(--up-text)}
+    .feedChip[data-state="stale"] .feedState{color:#E6A23C}
+    .feedChip[data-state="dead"] .feedState{color:var(--down-text)}
     .clock{display:inline-flex;align-items:center;gap:6px;color:var(--text);font-weight:650;font-size:12.5px;font-variant-numeric:tabular-nums;letter-spacing:.01em;white-space:nowrap}
     .clock::before{content:"";width:13px;height:13px;flex:0 0 auto;background:currentColor;opacity:.72;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3.2 1.8'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3.2 1.8'/%3E%3C/svg%3E") center/contain no-repeat}
     .clock .clkDate{color:var(--muted);font-weight:600}
@@ -120,6 +125,7 @@
     .dot{position:relative;width:9px;height:9px;border-radius:999px;background:var(--dim);display:inline-block;vertical-align:middle;transition:background .2s var(--ease), box-shadow .2s var(--ease);}
     .dot.live{background:var(--up);box-shadow:0 0 0 3px var(--up-soft)}
     .dot.live::after{content:"";position:absolute;inset:-3px;border-radius:999px;border:1px solid var(--up);opacity:0;animation:livePulse 2.6s var(--ease) infinite;pointer-events:none}
+    .dot.stale{background:#E6A23C;box-shadow:0 0 0 3px rgba(230,162,60,.15)}
     .dot.dead{background:var(--down);box-shadow:0 0 0 3px var(--down-soft)}
     @keyframes livePulse{0%{transform:scale(.6);opacity:.55}70%{transform:scale(1.6);opacity:0}100%{transform:scale(1.6);opacity:0}}
     .btn{
@@ -131,17 +137,19 @@
     .btn:hover{background:var(--surface-hover);border-color:var(--brand-line)}
     .btn:active{transform:translateY(1px)}
     .btn.icon{padding:8px 11px;font-size:15px;line-height:1;display:inline-flex;align-items:center;justify-content:center}
+    .controlDock{position:sticky;top:env(safe-area-inset-top);z-index:40;margin-top:12px;padding:10px 12px;border:1px solid var(--line-2);border-radius:14px;background:var(--glass);box-shadow:inset 0 1px 0 var(--edge),var(--shadow-sm);backdrop-filter:blur(20px) saturate(1.6);-webkit-backdrop-filter:blur(20px) saturate(1.6)}
     .filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .pill{
       display:inline-flex;align-items:center;gap:7px;padding:6px 12px 6px 7px;border-radius:999px;border:1px solid var(--line);
       background:var(--surface-2);color:var(--muted);font-size:12.5px;font-weight:600;cursor:pointer;user-select:none;
+      font-family:inherit;
       transition:background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), transform .1s var(--ease);
     }
     .filterIcon{width:22px;height:22px;object-fit:contain;flex:0 0 auto}
     .pill:hover{background:var(--surface-hover);color:var(--text)}
     .pill:active{transform:scale(.96)}
     .pill.on{color:var(--brand);border-color:var(--brand-line);background:var(--brand-soft);box-shadow:inset 0 1px 0 var(--edge)}
-    .sortWrap{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:12.5px}
+    .sortWrap{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:12.5px;margin-top:10px}
     select{border:1px solid var(--line-2);background:var(--surface-2);color:var(--text);padding:10px 12px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;transition:border-color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);}
     select:hover{border-color:var(--brand-line)}
     .search{border:1px solid var(--line-2);background:var(--surface-2);color:var(--text);padding:10px 12px;border-radius:var(--radius-sm);font-size:13px;outline:none;width:190px;max-width:44vw;transition:border-color var(--dur-1) var(--ease), background var(--dur-1) var(--ease)}
@@ -151,24 +159,43 @@
     .subfilters::-webkit-scrollbar{display:none}
     .subfilters.show{display:flex}
     .subfilters .slabel{color:var(--dim);font-size:12px;font-weight:650;margin-right:2px;flex-shrink:0}
-    .subchip{padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;user-select:none;white-space:nowrap;flex-shrink:0;transition:background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), transform .1s var(--ease)}
+    .subchip{padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;user-select:none;white-space:nowrap;flex-shrink:0;transition:background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), transform .1s var(--ease)}
     .subchip:hover{background:var(--surface-hover);color:var(--text)}
     .subchip:active{transform:scale(.96)}
     .subchip.on{color:var(--brand);border-color:var(--brand-line);background:var(--brand-soft);box-shadow:inset 0 1px 0 var(--edge)}
-    .grid{margin-top:24px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--surface);box-shadow:inset 0 1px 0 var(--edge), var(--shadow);}
+    .marketSummary{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:9px;min-height:28px;color:var(--dim);font-size:11.5px}
+    .qualityBadge{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border:1px solid var(--line);border-radius:999px;background:var(--surface-2);font-weight:650}
+    .qualityBadge.live{color:var(--up-text)}
+    .qualityBadge.stale{color:#E6A23C}
+    .qualityBadge.missing{color:var(--down-text)}
+    .summarySpacer{flex:1}
+    .summaryBtn{border:0;background:transparent;color:var(--brand);font-family:inherit;font-size:11.5px;font-weight:700;padding:4px 6px;cursor:pointer;border-radius:7px}
+    .summaryBtn:hover{background:var(--brand-soft)}
+    .listEmpty{margin-top:18px;padding:28px 18px;border:1px dashed var(--line-2);border-radius:var(--radius);background:var(--surface);text-align:center;color:var(--muted)}
+    .listEmpty[hidden]{display:none}
+    .listEmpty b{display:block;color:var(--text);font-size:15px;margin-bottom:5px}
+    .grid{margin-top:16px;border:1px solid var(--line);border-radius:var(--radius);overflow:clip;background:var(--surface);box-shadow:inset 0 1px 0 var(--edge), var(--shadow);}
     .hdr, .row{display:grid;grid-template-columns: 1.65fr .95fr .75fr .85fr;gap:12px;padding:14px 18px;align-items:center;}
-    .hdr{background:var(--surface-2);border-bottom:1px solid var(--line);color:var(--dim);font-size:11px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;}
+    .hdr{position:sticky;top:calc(var(--dock-h) + env(safe-area-inset-top));z-index:12;background:var(--surface-2);border-bottom:1px solid var(--line);color:var(--dim);font-size:11px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;}
     .hdr .hcell.sortable{display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none;transition:color .12s var(--ease)}
     .hdr .hcell.sortable:hover{color:var(--text)}
     .hdr .hcell.activeSort{color:var(--brand)}
     .sortArrow{font-size:10px;line-height:1;opacity:.35;display:inline-block;transition:opacity var(--dur-1) var(--ease), transform var(--dur-1) var(--ease)}
     .hcell.activeSort .sortArrow{opacity:1;transform:translateY(-.5px)}
     .row{position:relative;border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s var(--ease)}
+    .rowOpen{position:absolute;inset:0;z-index:1;border:0;background:transparent;cursor:pointer}
+    .rowOpen:focus-visible{outline:2px solid var(--brand);outline-offset:-2px;background:var(--brand-soft)}
+    .row > :not(.rowOpen){position:relative;z-index:2;pointer-events:none}
+    .row[data-quality="stale"]{opacity:.82}
     .row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;border-radius:0 2px 2px 0;background:var(--brand);transform:scaleY(0);opacity:0;transition:transform .18s var(--ease), opacity .18s var(--ease);pointer-events:none}
     .row:hover{background:var(--surface-hover)}
     .row:hover::before{transform:scaleY(1);opacity:1}
     .row:last-child{border-bottom:none}
     .sym{display:flex;gap:10px;align-items:center;min-width:0}
+    .favBtn{width:44px;height:44px;margin:-7px 0 -7px -7px;flex:0 0 auto;border:0;border-radius:10px;background:transparent;color:var(--dim);font-family:inherit;font-size:19px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;pointer-events:auto;transition:color .12s,background .12s,transform .1s}
+    .favBtn:hover{color:#F5B942;background:rgba(245,185,66,.12)}
+    .favBtn.on{color:#F5B942}
+    .favBtn:active{transform:scale(.9)}
     .sym .left{display:flex;flex-direction:column;gap:5px;min-width:0}
     .sym .code{font-weight:800;letter-spacing:-.01em;font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .sym .meta{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:12px;flex-wrap:wrap}
@@ -182,10 +209,17 @@
     .tag.ex{color:var(--t-ex)}
     .price{font-variant-numeric: tabular-nums;font-size:19px;font-weight:800;letter-spacing:-.01em;line-height:1.2}
     .usd{color:var(--muted);font-size:12px;margin-top:3px;font-variant-numeric: tabular-nums}
-    .chg{justify-self:end;font-variant-numeric: tabular-nums;font-weight:700;padding:8px 12px;border-radius:10px;min-width:108px;text-align:center;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);transition:background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);}
+    .chg{font-variant-numeric: tabular-nums;font-weight:700;padding:8px 12px;border-radius:10px;min-width:108px;text-align:center;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);transition:background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);}
     .chg.up{background:var(--up-soft);border-color:var(--up-line);color:var(--up-text)}
     .chg.down{background:var(--down-soft);border-color:var(--down-line);color:var(--down-text)}
-    .vol{color:var(--muted);font-size:12.5px;font-variant-numeric: tabular-nums;justify-self:end}
+    .volWrap,.chgWrap{justify-self:end;text-align:right;min-width:0}
+    .vol{color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+    .quoteMeta{display:inline-flex;align-items:center;gap:5px;max-width:100%;font-size:10.5px;color:var(--dim);white-space:nowrap}
+    .quoteMeta.live{color:var(--up-text)}
+    .quoteMeta.stale{color:#E6A23C}
+    .quoteMeta.fallback{color:var(--t-index)}
+    .mobileLabel{display:none}
+    .srOnly{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
     .note{margin-top:12px;color:var(--muted);font-size:12.5px;line-height:1.6;padding:0 2px;max-width:860px}
     .note b{color:var(--text);font-weight:600}
 
@@ -211,6 +245,7 @@
     .kCard{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:var(--radius);padding:18px 18px 16px;background:var(--surface);box-shadow:inset 0 1px 0 var(--edge), var(--shadow-sm);cursor:pointer;transition:transform var(--dur-1) var(--ease-out), box-shadow var(--dur-2) var(--ease), border-color var(--dur-1) var(--ease)}
     .kCard:hover{transform:translateY(-2px);box-shadow:inset 0 1px 0 var(--edge), var(--shadow);border-color:var(--line-2)}
     .kCard:active{transform:translateY(0) scale(.995);transition-duration:.08s}
+    @media (max-width:560px){#kospiBoard .kGrid{grid-template-columns:1fr}}
     .kCard.index{background:linear-gradient(165deg, rgba(59,130,246,.16), rgba(59,130,246,0) 62%), var(--surface);border-color:rgba(59,130,246,.30)}
     :root[data-theme="light"] .kCard.index{background:linear-gradient(165deg, rgba(49,130,246,.10), rgba(49,130,246,0) 62%), var(--surface);border-color:rgba(49,130,246,.26)}
     .kTop{display:flex;align-items:center;gap:10px;min-width:0}
@@ -323,6 +358,15 @@
       padding:14px 16px;border-bottom:1px solid var(--line);
       background:var(--surface-2);
     }
+    .tvIdentity{min-width:72px;flex:1 1 auto;overflow:hidden}
+    #tvTitle,#tvSubtitle{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .tvControls{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex:0 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
+    .tvControls::-webkit-scrollbar{display:none}
+    .tvInterval{min-width:36px;height:36px;padding:0 7px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--muted);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;flex:0 0 auto}
+    .tvInterval:hover{color:var(--text);border-color:var(--brand-line)}
+    .tvInterval.on{color:var(--brand);background:var(--brand-soft);border-color:var(--brand-line)}
+    .tvExternal{height:36px;padding:0 8px;display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:8px;color:var(--muted);text-decoration:none;font-size:11px;font-weight:700;flex:0 0 auto}
+    .tvExternal:hover{color:var(--brand);border-color:var(--brand-line)}
     #tvTitle{font-weight:800;letter-spacing:-.01em}
     #tvChart{position:relative;height:72vh;min-height:520px}
     /* 컨테이너/아이프레임은 in-flow 100% 로 확정 높이의 #tvChart 를 채움. TradingView 오토사이즈가
@@ -331,10 +375,31 @@
     #tvChart iframe{width:100%;height:100%;border:0}
     @media (max-width:760px){
       .hdr{display:none}
-      .row{grid-template-columns: 1fr 1fr;grid-template-areas:"sym chg" "price vol" "usd vol";row-gap:8px;}
-      .sym{grid-area:sym}.chg{grid-area:chg}.priceWrap{grid-area:price}.vol{grid-area:vol}.usd{grid-area:usd}
-      .chg{justify-self:end}.vol{justify-self:end}
+      .wrap{padding-top:max(12px,env(safe-area-inset-top));padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
+      .top{padding:14px}
+      .status .muted{display:none}
+      .controlDock{margin-left:-2px;margin-right:-2px;padding:9px 8px;border-radius:12px}
+      .filters{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -2px;padding:0 2px 4px}
+      .filters::-webkit-scrollbar{display:none}
+      .pill{flex:0 0 auto}
+      .sortWrap{display:grid;grid-template-columns:minmax(0,1fr) auto}
+      .sortWrap .sortLabel{display:none}
+      .search{width:100%;max-width:none}
+      .marketSummary{gap:5px}
+      .summarySpacer{display:none}
+      .row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"sym chg" "price vol";row-gap:10px;min-height:112px;padding:14px 13px;}
+      .sym{grid-area:sym}.chgWrap{grid-area:chg}.priceWrap{grid-area:price}.volWrap{grid-area:vol}
+      .chgWrap,.volWrap{justify-self:end}
+      .mobileLabel{display:block;color:var(--dim);font-size:10px;font-weight:650;letter-spacing:.04em;margin-bottom:3px}
+      .priceWrap,.volWrap,.chgWrap,.vol,.chg{min-width:0}
+      .chg{padding:7px 9px;min-width:96px}
+      .quoteMeta{max-width:180px;overflow:hidden;text-overflow:ellipsis}
       #tvChart{height:70vh;min-height:480px}
+      #tvSubtitle{display:block;font-size:10px}
+      .tvControls{max-width:64vw}
+      .tvInterval{min-width:34px;height:40px;padding:0 5px}
+      .tvExternal{height:40px}
+      .tvExternal{padding:0 6px}
     }
     /* 차트 화면: 루트부터 TradingView iframe까지 한 뷰포트에 고정.
        교차 출처 iframe의 세로 제스처가 모바일 브라우저 주소창을 접지 않도록 기본 스크롤/오버스크롤을 모두 차단한다. */
@@ -343,17 +408,17 @@
     body.tv-open .wrap{height:100%;height:100svh;overflow:hidden;overscroll-behavior:none;}
     /* #tvView: 주소창이 포함된 작은 뷰포트(svh)를 기준으로 고정해 동적 뷰포트 리사이즈도 막는다. */
     body.tv-open #tvView{position:fixed;inset:0;z-index:1000;margin:0;height:100%;height:100svh;max-height:100svh;overflow:hidden;background:var(--bg);overscroll-behavior:none;touch-action:none;}
-    /* 상단 '뒤로' 바: 높이를 48px 로 고정 → 아래 #tvBox 의 top 오프셋이 확정값이 됨. nowrap 로 줄바꿈 방지 */
-    body.tv-open .top{height:48px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;flex-wrap:nowrap;overflow:hidden;margin:0;padding:0 14px;border:0;border-radius:0;box-shadow:none;background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;border-bottom:1px solid var(--line);}
+    /* 상단 '뒤로' 바: 48px + 노치 안전영역. nowrap 로 줄바꿈 방지 */
+    body.tv-open .top{height:calc(48px + env(safe-area-inset-top));box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;flex-wrap:nowrap;overflow:hidden;margin:0;padding:env(safe-area-inset-top) max(14px,env(safe-area-inset-right)) 0 max(14px,env(safe-area-inset-left));border:0;border-radius:0;box-shadow:none;background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;border-bottom:1px solid var(--line);}
     body.tv-open .top .sub{display:none;}
     body.tv-open .title h1{font-size:15px;font-weight:800;}
-    /* #tvBox: 절대배치 top=배너높이(48px), bottom:0 → 높이 = (뷰포트-48px) 확정 픽셀값 (flex/percent 의존 없음) */
-    body.tv-open #tvBox{position:absolute;left:0;right:0;top:48px;bottom:0;margin:0;border:0;border-radius:0;box-shadow:none;overflow:hidden;background:var(--surface);overscroll-behavior:none;touch-action:none;}
-    /* #tvHeader: 종목명 바, 높이 44px 고정 → 아래 #tvChart top 오프셋 확정 */
-    body.tv-open #tvHeader{height:44px;box-sizing:border-box;padding:0 16px;flex-wrap:nowrap;overflow:hidden;}
-    /* #tvChart: 절대배치 top=헤더높이(44px), bottom:0 → 높이 = (뷰포트-48-44) 확정 픽셀값.
+    /* #tvBox: 배너와 홈 인디케이터 안전영역 사이를 확정 높이로 사용 */
+    body.tv-open #tvBox{position:absolute;left:0;right:0;top:calc(48px + env(safe-area-inset-top));bottom:env(safe-area-inset-bottom);margin:0;border:0;border-radius:0;box-shadow:none;overflow:hidden;background:var(--surface);overscroll-behavior:none;touch-action:none;}
+    /* #tvHeader: 종목명·주기 바, 높이 52px 고정 → 아래 #tvChart top 오프셋 확정 */
+    body.tv-open #tvHeader{height:52px;box-sizing:border-box;padding:0 max(10px,env(safe-area-inset-right)) 0 max(10px,env(safe-area-inset-left));flex-wrap:nowrap;overflow:hidden;}
+    /* #tvChart: 절대배치 top=헤더높이(52px), bottom:0 → 높이 = (뷰포트-48-52) 확정 픽셀값.
        TradingView의 JS 포인터 동작은 유지하면서 브라우저의 기본 터치 스크롤만 억제한다. */
-    body.tv-open #tvChart{position:absolute;left:0;right:0;top:44px;bottom:0;height:auto;min-height:0;overflow:hidden;overscroll-behavior:none;touch-action:none;}
+    body.tv-open #tvChart{position:absolute;left:0;right:0;top:52px;bottom:0;height:auto;min-height:0;overflow:hidden;overscroll-behavior:none;touch-action:none;}
     body.tv-open #tvChart #tv_chart_container,
     body.tv-open #tvChart iframe{overflow:hidden;overscroll-behavior:none;touch-action:none;}
 
@@ -374,7 +439,7 @@
   <!-- LIST VIEW -->
   <div id="listView">
     <div class="top">
-      <button class="btn icon" id="themeBtn" title="다크/라이트 전환" aria-label="테마 전환"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.4 14.2A8.4 8.4 0 0 1 9.8 3.6a8.4 8.4 0 1 0 10.6 10.6Z"/></svg></button>
+      <button class="btn icon" id="themeBtn" type="button" title="다크/라이트 전환" aria-label="테마 전환"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.4 14.2A8.4 8.4 0 0 1 9.8 3.6a8.4 8.4 0 1 0 10.6 10.6Z"/></svg></button>
       <div class="title">
         <h1>마켓 라이브 · TradFi × Crypto</h1>
         <div class="sub">
@@ -386,32 +451,36 @@
       <div class="status">
         <span class="clock" id="topClock" title="한국 시간(KST)">-</span>
         <span class="muted">|</span>
-        <span><span class="dot" id="dotMexc"></span> MEXC</span>
-        <span><span class="dot" id="dotHyper"></span> Hyperliquid</span>
-        <span title="바이낸스 선물은 한국에서 접속이 제한될 수 있어요"><span class="dot" id="dotBinance"></span> Binance</span>
+        <span class="feedChip" id="feedMexc" data-state="wait"><span class="dot" id="dotMexc"></span><span>MEXC</span><span class="feedState" id="stateMexc">연결 중</span></span>
+        <span class="feedChip" id="feedHyper" data-state="wait"><span class="dot" id="dotHyper"></span><span>Hyperliquid</span><span class="feedState" id="stateHyper">연결 중</span></span>
+        <span class="feedChip" id="feedBinance" data-state="wait" title="바이낸스 선물은 한국에서 접속이 제한될 수 있어요"><span class="dot" id="dotBinance"></span><span>Binance</span><span class="feedState" id="stateBinance">연결 중</span></span>
         <span class="muted">|</span>
         <span class="fxBadge" title="원/달러 환율"><span class="fxLabel">USD/KRW</span><span id="usdKrwTop">-</span></span>
         <span class="muted">|</span>
-        <button class="btn" id="reconnectBtn">재연결</button>
+        <button class="btn" id="reconnectBtn" type="button">재연결</button>
       </div>
+    </div>
 
-      <div class="filters">
-        <div class="pill on" id="filterAll"><img class="filterIcon" src="assets/icons/all.png" alt="" aria-hidden="true" />전체</div>
-        <div class="pill" id="filterKor"><img class="filterIcon" src="assets/icons/korea.png" alt="" aria-hidden="true" />코스피</div>
-        <div class="pill" id="filterKospi"><img class="filterIcon" src="assets/icons/memory.png" alt="" aria-hidden="true" />메모리</div>
-        <div class="pill" id="filterCrypto"><img class="filterIcon" src="assets/icons/crypto.png" alt="" aria-hidden="true" />크립토</div>
-        <div class="pill" id="filterStock"><img class="filterIcon" src="assets/icons/stocks.png" alt="" aria-hidden="true" />주식</div>
-        <div class="pill" id="filterIndex"><img class="filterIcon" src="assets/icons/index.png" alt="" aria-hidden="true" />지수/ETF</div>
-        <div class="pill" id="filterFX"><img class="filterIcon" src="assets/icons/fx.png" alt="" aria-hidden="true" />FX</div>
-        <div class="pill" id="filterCommo"><img class="filterIcon" src="assets/icons/commodities.png" alt="" aria-hidden="true" />원자재/금속</div>
-        <div class="pill" id="filterEnergy"><img class="filterIcon" src="assets/icons/energy.png" alt="" aria-hidden="true" />에너지</div>
+    <section class="controlDock" id="controlDock" aria-label="종목 탐색">
+      <div class="filters" role="group" aria-label="시장 분류">
+        <button class="pill on" id="filterAll" type="button" aria-pressed="true"><img class="filterIcon" src="assets/icons/all.png" alt="" aria-hidden="true" />전체</button>
+        <button class="pill" id="filterFav" type="button" aria-pressed="false"><span aria-hidden="true">★</span>관심</button>
+        <button class="pill" id="filterKor" type="button" aria-pressed="false"><img class="filterIcon" src="assets/icons/korea.png" alt="" aria-hidden="true" />코스피</button>
+        <button class="pill" id="filterKospi" type="button" aria-pressed="false"><img class="filterIcon" src="assets/icons/memory.png" alt="" aria-hidden="true" />메모리</button>
+        <button class="pill" id="filterCrypto" type="button" aria-pressed="false"><img class="filterIcon" src="assets/icons/crypto.png" alt="" aria-hidden="true" />크립토</button>
+        <button class="pill" id="filterStock" type="button" aria-pressed="false"><img class="filterIcon" src="assets/icons/stocks.png" alt="" aria-hidden="true" />주식</button>
+        <button class="pill" id="filterIndex" type="button" aria-pressed="false"><img class="filterIcon" src="assets/icons/index.png" alt="" aria-hidden="true" />지수/ETF</button>
+        <button class="pill" id="filterFX" type="button" aria-pressed="false"><img class="filterIcon" src="assets/icons/fx.png" alt="" aria-hidden="true" />FX</button>
+        <button class="pill" id="filterCommo" type="button" aria-pressed="false"><img class="filterIcon" src="assets/icons/commodities.png" alt="" aria-hidden="true" />원자재/금속</button>
+        <button class="pill" id="filterEnergy" type="button" aria-pressed="false"><img class="filterIcon" src="assets/icons/energy.png" alt="" aria-hidden="true" />에너지</button>
       </div>
 
       <div class="subfilters" id="stockSub"></div>
 
       <div class="sortWrap">
-        <input class="search" id="searchInput" type="search" placeholder="검색 (NVDA, 삼성…)" autocomplete="off" />
-        <span class="muted">정렬</span>
+        <label class="srOnly" for="searchInput">종목 검색</label>
+        <input class="search" id="searchInput" type="search" placeholder="현재 분류에서 검색 (NVDA, 삼성…)" autocomplete="off" />
+        <label class="muted sortLabel" for="sortSel">정렬</label>
         <select id="sortSel">
           <option value="default">기본정렬</option>
           <option value="chgDesc">등락률↓</option>
@@ -424,7 +493,15 @@
           <option value="nameDesc">이름 Z→A</option>
         </select>
       </div>
-    </div>
+      <div class="marketSummary" id="marketSummary">
+        <span class="qualityBadge live"><span class="dot live"></span>실시간 <b id="liveCount">0</b></span>
+        <span class="qualityBadge stale"><span class="dot stale"></span>지연 <b id="staleCount">0</b></span>
+        <span class="qualityBadge missing"><span class="dot dead"></span>미수신 <b id="missingCount">0</b></span>
+        <span class="summarySpacer"></span>
+        <span id="resultCount">표시 0개</span>
+        <button class="summaryBtn" id="missingToggle" type="button" aria-pressed="false">미수신 종목 보기</button>
+      </div>
+    </section>
 
     <!-- KOSPI BOARD -->
     <section class="kospiBoard" id="kospiBoard">
@@ -470,10 +547,14 @@
     <div class="grid" id="grid">
       <div class="hdr" id="hdr">
         <div class="hcell sortable" data-sortkey="name">종목 <span class="sortArrow" aria-hidden="true"></span></div>
-        <div class="hcell sortable muted" data-sortkey="price">Last Price <span class="sortArrow" aria-hidden="true"></span></div>
-        <div class="hcell sortable muted" data-sortkey="vol" style="justify-self:end;">Vol(24h) <span class="sortArrow" aria-hidden="true"></span></div>
-        <div class="hcell sortable muted" data-sortkey="chg" style="justify-self:end;">Change(일봉) <span class="sortArrow" aria-hidden="true"></span></div>
+        <div class="hcell sortable muted" data-sortkey="price">현재가 <span class="sortArrow" aria-hidden="true"></span></div>
+        <div class="hcell sortable muted" data-sortkey="vol" style="justify-self:end;">24시간 거래대금 <span class="sortArrow" aria-hidden="true"></span></div>
+        <div class="hcell sortable muted" data-sortkey="chg" style="justify-self:end;">등락 <span class="sortArrow" aria-hidden="true"></span></div>
       </div>
+    </div>
+    <div class="listEmpty" id="listEmpty" hidden>
+      <b>조건에 맞는 종목이 없습니다</b>
+      검색어를 지우거나 다른 분류를 선택해 주세요.
     </div>
   </div>
 
@@ -485,16 +566,26 @@
         <div class="sub">실시간 차트(TradingView) · 뒤로를 누르면 목록으로 돌아가</div>
       </div>
       <div class="status">
-        <button class="btn" id="backBtn">← 뒤로</button>
+        <button class="btn" id="backBtn" type="button">← 뒤로</button>
       </div>
     </div>
 
     <div id="tvBox">
       <div id="tvHeader">
-        <div id="tvTitle">-</div>
-        <div class="muted" id="tvSubtitle">-</div>
+        <div class="tvIdentity">
+          <div id="tvTitle">-</div>
+          <div class="muted" id="tvSubtitle">-</div>
+        </div>
+        <div class="tvControls" id="tvControls" role="group" aria-label="차트 시간 간격">
+          <button class="tvInterval" type="button" data-interval="5">5분</button>
+          <button class="tvInterval" type="button" data-interval="15">15분</button>
+          <button class="tvInterval" type="button" data-interval="60">1시간</button>
+          <button class="tvInterval" type="button" data-interval="240">4시간</button>
+          <button class="tvInterval" type="button" data-interval="D">일봉</button>
+          <a class="tvExternal" id="tvExternal" href="#" target="_blank" rel="noopener">새 창</a>
+        </div>
       </div>
-      <div id="tvChart"></div>
+      <div id="tvChart" aria-live="polite"></div>
     </div>
   </div>
 </div>
@@ -504,6 +595,7 @@
 const grid = document.getElementById("grid");
 const dotBinance = document.getElementById("dotBinance");
 const dotMexc = document.getElementById("dotMexc");
+const dotHyper = document.getElementById("dotHyper");
 const sortSel = document.getElementById("sortSel");
 let sortMode = "default";
 const listView = document.getElementById("listView");
@@ -520,9 +612,130 @@ const KOSPI_NIGHT_POLL_MS   = 30000;   // 야간선물 세션 중 폴링
 const KOSPI_IDLE_POLL_MS    = 90000;   // 그 외(도미넌스용 코스피 지수만 갱신 — 야간선물은 휴장 표시)
 
 function setDot(dot, state){
-  dot.classList.remove("live","dead");
+  if(!dot) return;
+  dot.classList.remove("live","stale","dead");
   if(state === "LIVE") dot.classList.add("live");
+  if(state === "STALE") dot.classList.add("stale");
   if(state === "DEAD") dot.classList.add("dead");
+}
+
+/* ===== 데이터 신뢰도: 소켓 연결이 아니라 실제 정상 틱 기준 ===== */
+const FEED_TTL = { BINANCE:15000, HYPER:30000, MEXC:30000 };
+const FEED_STARTUP_TIMEOUT = { BINANCE:20000, HYPER:25000, MEXC:30000 };
+const feedLastTick = { BINANCE:0, HYPER:0, MEXC:0 };
+const feedOpenedAt = { BINANCE:0, HYPER:0, MEXC:0 };
+const feedIsOpen = { BINANCE:false, HYPER:false, MEXC:false };
+const feedUi = {
+  BINANCE:{ dot:dotBinance, chip:document.getElementById("feedBinance"), state:document.getElementById("stateBinance") },
+  HYPER:{ dot:dotHyper, chip:document.getElementById("feedHyper"), state:document.getElementById("stateHyper") },
+  MEXC:{ dot:dotMexc, chip:document.getElementById("feedMexc"), state:document.getElementById("stateMexc") }
+};
+function ageText(ts){
+  if(!isFinite(ts) || ts <= 0) return "수신 전";
+  const sec = Math.max(0, Math.floor((Date.now()-ts)/1000));
+  if(sec < 5) return "방금";
+  if(sec < 60) return sec + "초 전";
+  const min = Math.floor(sec/60);
+  if(min < 60) return min + "분 전";
+  return Math.floor(min/60) + "시간 전";
+}
+function setFeedState(source, state){
+  const ui = feedUi[source];
+  if(!ui) return;
+  const label = state === "LIVE" ? "실시간" : state === "STALE" ? "지연" : state === "DEAD" ? "끊김" : "연결 중";
+  setDot(ui.dot, state);
+  if(ui.chip){
+    ui.chip.dataset.state = state.toLowerCase();
+    ui.chip.title = source + " · " + label + (feedLastTick[source] ? " · 마지막 틱 " + ageText(feedLastTick[source]) : "");
+  }
+  if(ui.state) ui.state.textContent = label;
+}
+function markFeedOpening(source){
+  feedIsOpen[source] = true;
+  feedLastTick[source] = 0;
+  feedOpenedAt[source] = Date.now();
+  setFeedState(source, "WAIT");
+}
+function markFeedTick(source){
+  feedIsOpen[source] = true;
+  feedLastTick[source] = Date.now();
+  setFeedState(source, "LIVE");
+}
+function markFeedClosed(source){
+  feedIsOpen[source] = false;
+  feedOpenedAt[source] = 0;
+  setFeedState(source, "DEAD");
+}
+function activeFeedSocket(source){
+  if(source === "BINANCE") return wsBinance;
+  if(source === "HYPER") return wsHyper;
+  if(source === "MEXC") return wsMexc;
+  return null;
+}
+function closeFeedForRecovery(source){
+  const socket = activeFeedSocket(source);
+  if(!socket || (socket.readyState !== WebSocket.OPEN && socket.readyState !== WebSocket.CONNECTING)) return;
+  try{ socket.close(); }catch(_){}
+}
+function refreshFeedHealth(){
+  const now = Date.now();
+  for(const source of Object.keys(FEED_TTL)){
+    if(!feedIsOpen[source]){ setFeedState(source, "DEAD"); continue; }
+    const age = now - feedLastTick[source];
+    if(!feedLastTick[source]){
+      if(feedOpenedAt[source] && now-feedOpenedAt[source] > FEED_STARTUP_TIMEOUT[source]){
+        setFeedState(source, "DEAD");
+        closeFeedForRecovery(source);
+      }else{
+        setFeedState(source, "WAIT");
+      }
+    }
+    else if(age <= FEED_TTL[source]) setFeedState(source, "LIVE");
+    else if(age <= FEED_TTL[source] * 4) setFeedState(source, "STALE");
+    else{
+      setFeedState(source, "DEAD");
+      closeFeedForRecovery(source);
+    }
+  }
+}
+setInterval(refreshFeedHealth, 5000);
+
+const QUOTE_TTL = { BINANCE:15000, HYPER:30000, MEXC:30000, FRANKFURTER:150000, COINGECKO:120000 };
+function quoteQuality(v){
+  if(!v || !isFinite(v.last) || !isFinite(v.ts)) return "missing";
+  const ttl = QUOTE_TTL[v.src] || 60000;
+  const age = Date.now() - v.ts;
+  if(age <= ttl) return "live";
+  if(age <= ttl * 4) return "stale";
+  return "missing";
+}
+function statsQuality(v){
+  if(!v || !isFinite(v.vol) || !isFinite(v.statsTs)) return "missing";
+  const ttl = QUOTE_TTL[v.statsSrc] || 60000;
+  const age = Date.now() - v.statsTs;
+  if(age <= ttl) return "live";
+  if(age <= ttl * 4) return "stale";
+  return "missing";
+}
+function normalizeSourceTimestamp(value, fallback=Date.now()){
+  let ts = Number(value);
+  if(!isFinite(ts) || ts <= 0) return fallback;
+  if(ts < 1e11) ts *= 1000;
+  if(ts > fallback + 300000) return fallback;
+  return ts;
+}
+function quoteSourceLabel(v){
+  if(!v || !v.src) return "시세 대기";
+  if(v.src === "HYPER") return "Hyperliquid · 폴백";
+  if(v.src === "FRANKFURTER") return "Frankfurter · 환율";
+  if(v.src === "COINGECKO") return "CoinGecko · 폴백";
+  return v.src;
+}
+function quoteBasisLabel(v){
+  if(!v || !isFinite(v.pct)) return "등락 기준 대기";
+  if(v.pctBasis === "KRX_CLOSE") return "KRX 전일 마감 대비";
+  if(v.pctBasis === "24H") return "24시간 등락";
+  return "일봉 시가 대비";
 }
 
 /* ===== Theme (dark/light) ===== */
@@ -930,11 +1143,36 @@ const krxAnchorMsById = new Map(); // id -> 위 값의 기준일(anchorMs)
 const krxFetchAtById = new Map();  // id -> 마지막 fetch 시도(ms), 실패 재시도 throttle
 const pendingRender = new Set();
 let rafScheduled = false;
+const FAVORITES_KEY = "nas:favorites:v1";
+let favorites = new Set();
+try{
+  const saved = JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
+  if(Array.isArray(saved)) favorites = new Set(saved);
+}catch(_){}
+function saveFavorites(){
+  try{ localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favorites])); }catch(_){}
+}
+function toggleFavorite(id){
+  if(favorites.has(id)) favorites.delete(id); else favorites.add(id);
+  saveFavorites();
+  const r = rows.get(id);
+  if(r){
+    const on = favorites.has(id);
+    r.row.dataset.favorite = on ? "1" : "0";
+    r.favEl.classList.toggle("on", on);
+    r.favEl.textContent = on ? "★" : "☆";
+    r.favEl.setAttribute("aria-pressed", String(on));
+    r.favEl.title = on ? "관심종목에서 제거" : "관심종목에 추가";
+    r.favEl.setAttribute("aria-label", (r.def.krLabel || r.def.label || r.def.base) + (on ? " 관심종목에서 제거" : " 관심종목에 추가"));
+  }
+  setFilter(currentFilterMode);
+}
 
 function buildRows(){
   for(const it of INSTRUMENTS){
     const row = document.createElement("div");
     row.className = "row";
+    row.setAttribute("role", "group");
     row.dataset.type = it.type;
     row.dataset.order = String(it._order);
     row.dataset.sortChg = "-999999";
@@ -943,6 +1181,8 @@ function buildRows(){
     row.dataset.sortName = it.display.toUpperCase();
     row.dataset.kospi = it.kospi ? "1" : "0";
     row.dataset.kor = it.korStock ? "1" : "0";
+    row.dataset.dead = "0";
+    row.dataset.favorite = favorites.has(it.id) ? "1" : "0";
     row.dataset.stockGroup = (it.type === "Stock") ? (STOCK_GROUP_OF.get(it.base) || "") : "";
     row.dataset.search = ((it.display||"")+" "+(it.krLabel||"")+" "+(it.label||"")+" "+(it.base||"")+" "+(ASSET_NAMES[it.base]||"")).toUpperCase();
 
@@ -968,6 +1208,14 @@ function buildRows(){
 
     const sym = document.createElement("div"); sym.className="sym";
     const left = document.createElement("div"); left.className="left";
+    const fav = document.createElement("button");
+    fav.className = "favBtn" + (favorites.has(it.id) ? " on" : "");
+    fav.type = "button";
+    fav.textContent = favorites.has(it.id) ? "★" : "☆";
+    fav.title = favorites.has(it.id) ? "관심종목에서 제거" : "관심종목에 추가";
+    fav.setAttribute("aria-label", (it.krLabel || it.label || it.base) + (favorites.has(it.id) ? " 관심종목에서 제거" : " 관심종목에 추가"));
+    fav.setAttribute("aria-pressed", String(favorites.has(it.id)));
+    fav.addEventListener("click", (e)=>{ e.stopPropagation(); toggleFavorite(it.id); });
 
     // 큰 글씨 = 영문 티커/심볼로 통일(거래쌍 'XUSDT'·한글 라벨 제거), 작은 글씨 = 회사·자산 이름(있을 때만)
     const primaryTicker = it.label || it.base || it.display;
@@ -979,32 +1227,45 @@ function buildRows(){
     const tagEx = document.createElement("span"); tagEx.className="tag ex"; tagEx.textContent = it.ex;
     const tagType = document.createElement("span"); tagType.className="tag "+typeTagClass(it.type);
     tagType.textContent = (it.type==="Index") ? "Index/ETF" : it.type;
+    const tagSource = document.createElement("span"); tagSource.className="quoteMeta"; tagSource.textContent = "시세 대기";
 
     // 이름은 티커와 다를 때만 표기 → 티커 중복(예: 'AAPLUSDT AAPL') 제거
     const nameEl = document.createElement("span"); nameEl.className="muted";
     nameEl.textContent = (assetName && assetName !== primaryTicker) ? assetName : "";
 
-    meta.appendChild(tagPerp); meta.appendChild(tagEx); meta.appendChild(tagType);
+    meta.appendChild(tagPerp); meta.appendChild(tagEx); meta.appendChild(tagType); meta.appendChild(tagSource);
     if(nameEl.textContent) meta.appendChild(nameEl);
     left.appendChild(code); left.appendChild(meta);
-    sym.appendChild(left);
+    sym.appendChild(fav); sym.appendChild(left);
 
     const priceWrap = document.createElement("div");
     priceWrap.style.display="flex"; priceWrap.style.flexDirection="column"; priceWrap.style.gap="4px";
     priceWrap.classList.add("priceWrap");
+    const priceLabel = document.createElement("span"); priceLabel.className="mobileLabel"; priceLabel.textContent="현재가";
+    priceWrap.appendChild(priceLabel);
 
     const price = document.createElement("div"); price.className="price"; price.textContent="-";
     priceWrap.appendChild(price);
 
+    const volWrap = document.createElement("div"); volWrap.className="volWrap";
+    const volLabel = document.createElement("span"); volLabel.className="mobileLabel"; volLabel.textContent="24시간 거래대금";
     const vol = document.createElement("div"); vol.className="vol"; vol.textContent="-";
+    volWrap.appendChild(volLabel); volWrap.appendChild(vol);
+    const chgWrap = document.createElement("div"); chgWrap.className="chgWrap";
+    const chgLabel = document.createElement("span"); chgLabel.className="mobileLabel"; chgLabel.textContent="등락";
     const chg = document.createElement("div"); chg.className="chg"; chg.textContent="-";
+    chgWrap.appendChild(chgLabel); chgWrap.appendChild(chg);
 
-    row.appendChild(sym); row.appendChild(priceWrap); row.appendChild(vol); row.appendChild(chg);
+    const openBtn = document.createElement("button");
+    openBtn.className = "rowOpen";
+    openBtn.type = "button";
+    openBtn.setAttribute("aria-label", (it.krLabel || it.label || it.base) + " TradingView 차트 열기");
+    openBtn.addEventListener("click", (e) => openTradingView(it, e.currentTarget));
+
+    row.appendChild(openBtn); row.appendChild(sym); row.appendChild(priceWrap); row.appendChild(volWrap); row.appendChild(chgWrap);
     grid.appendChild(row);
 
-    rows.set(it.id, { row, priceEl:price, volEl:vol, chgEl:chg, def:it });
-
-    row.addEventListener("click", () => openTradingView(it));
+    rows.set(it.id, { row, openEl:openBtn, priceEl:price, volEl:vol, chgEl:chg, sourceEl:tagSource, favEl:fav, def:it });
   }
 }
 buildRows();
@@ -1113,6 +1374,21 @@ function buildKospiBoard(){
 }
 buildKospiBoard();
 
+function updateCardFeedStatus(c, v){
+  const quality = quoteQuality(v);
+  setDot(c.dotEl, quality === "live" ? "LIVE" : quality === "stale" ? "STALE" : "DEAD");
+  const statusEl = c.dotEl ? c.dotEl.nextElementSibling : null;
+  if(!statusEl) return;
+  if(!v){
+    statusEl.textContent = "데이터 연결 대기";
+    return;
+  }
+  const source = quoteSourceLabel(v);
+  statusEl.textContent = quality === "live" ? source + " · 실시간"
+    : quality === "stale" ? source + " · " + ageText(v.ts) + " 지연"
+    : source + " · 오래된 시세";
+}
+
 function updateKospiCard(id){
   const c = kospiCardEls.get(id);
   if(!c) return;
@@ -1124,7 +1400,7 @@ function updateKospiCard(id){
     if(v && isFinite(v.last)){
       c.priceEl.textContent = (c.def.unit || "") + fmtPrice(v.last);
       c.priceEl.classList.remove("wait");
-      setDot(c.dotEl, "LIVE");
+      updateCardFeedStatus(c, v);
       if(isFinite(v.pct)){
         const up = v.pct >= 0;
         c.deltaEl.textContent = (up?"▲ ":"▼ ") + Math.abs(v.pct).toFixed(2) + "%";
@@ -1138,13 +1414,22 @@ function updateKospiCard(id){
       c.priceEl.classList.add("wait");
       c.deltaEl.textContent = (c.mode === "index") ? "지수 데이터 연결 대기" : "데이터 연결 대기";
       c.deltaEl.className = "kDelta";
-      setDot(c.dotEl, "DEAD");
+      updateCardFeedStatus(c, null);
     }
     return;
   }
 
-  if(!v || !isFinite(v.last)){ setDot(c.dotEl, "DEAD"); return; }
-  setDot(c.dotEl, "LIVE");
+  if(!v || !isFinite(v.last)){
+    c.priceEl.innerHTML = `<span class="won">${c.def.usdMain ? "$" : "₩"}</span>-`;
+    c.usdEl.textContent = c.def.usdMain ? "₩ -" : "$ -";
+    c.deltaEl.textContent = "전일 대비 –";
+    c.deltaEl.className = "kDelta";
+    if(c.capEl) c.capEl.innerHTML = `시총 <b>-</b>`;
+    if(c.premEl) c.premEl.innerHTML = `본주 대비 프리미엄 <b>-</b>`;
+    updateCardFeedStatus(c, null);
+    return;
+  }
+  updateCardFeedStatus(c, v);
 
   const scale = c.def.krwScale || 1;
   const usd = v.last;
@@ -1231,6 +1516,7 @@ const domSrc      = document.getElementById("domSrc");
 const domNote     = document.getElementById("domNote");
 const kospiIdxCard= document.getElementById("kospiIdxCard");
 const filterAll   = document.getElementById("filterAll");
+const filterFav   = document.getElementById("filterFav");
 const filterKospi = document.getElementById("filterKospi");
 const filterKor   = document.getElementById("filterKor");
 const filterCrypto= document.getElementById("filterCrypto");
@@ -1240,23 +1526,77 @@ const filterFX    = document.getElementById("filterFX");
 const filterCommo = document.getElementById("filterCommo");
 const filterEnergy= document.getElementById("filterEnergy");
 const searchInput = document.getElementById("searchInput");
+const resultCount = document.getElementById("resultCount");
+const liveCount = document.getElementById("liveCount");
+const staleCount = document.getElementById("staleCount");
+const missingCount = document.getElementById("missingCount");
+const missingToggle = document.getElementById("missingToggle");
+const listEmpty = document.getElementById("listEmpty");
 let currentFilterMode = "ALL";
 let searchQuery = "";
+let showMissing = false;
+let pruneComplete = false;
+let mexcWarmupActive = false;
+
+const FILTER_BUTTONS = [
+  [filterAll,"ALL"], [filterFav,"FAV"], [filterKospi,"KOSPI"], [filterKor,"KOR"],
+  [filterCrypto,"Crypto"], [filterStock,"Stock"], [filterIndex,"Index"],
+  [filterFX,"FX"], [filterCommo,"Commodity"], [filterEnergy,"Energy"]
+];
+function rowMatchesMode(row, mode){
+  const t = row.dataset.type;
+  return (mode==="ALL") ||
+    (mode==="FAV" && row.dataset.favorite==="1") ||
+    (mode==="KOSPI" && row.dataset.kospi==="1") ||
+    (mode==="KOR" && row.dataset.kor==="1") ||
+    (mode==="Crypto" && t==="Crypto") ||
+    (mode==="Stock" && t==="Stock" && (stockSubFilter==="ALL" || row.dataset.stockGroup===stockSubFilter)) ||
+    (mode==="Index" && t==="Index") ||
+    (mode==="FX" && t==="FX") ||
+    (mode==="Energy" && t==="Energy") ||
+    (mode==="Commodity" && t==="Commodity");
+}
+function rowMatchesQuery(row){
+  const q = searchQuery.trim().toUpperCase();
+  return !q || (row.dataset.search || "").includes(q);
+}
+function updateMarketSummary(){
+  let live=0, stale=0, missing=0, visible=0, matched=0;
+  for(const [id, {row}] of rows){
+    if(!rowMatchesMode(row, currentFilterMode) || !rowMatchesQuery(row)) continue;
+    matched++;
+    const quality = quoteQuality(lastValue.get(id));
+    if(quality === "live") live++;
+    else if(quality === "stale") stale++;
+    else missing++;
+    if(row.style.display !== "none") visible++;
+  }
+  if(liveCount && liveCount.textContent !== String(live)) liveCount.textContent = String(live);
+  if(staleCount && staleCount.textContent !== String(stale)) staleCount.textContent = String(stale);
+  const missingLabel = pruneComplete ? String(missing) : "대기";
+  if(missingCount && missingCount.textContent !== missingLabel) missingCount.textContent = missingLabel;
+  const resultLabel = pruneComplete ? `표시 ${visible}개 · 조건 ${matched}개` : `표시 ${visible}개 · 시세 수신 중`;
+  if(resultCount && resultCount.textContent !== resultLabel) resultCount.textContent = resultLabel;
+  if(missingToggle){
+    missingToggle.hidden = !pruneComplete || missing === 0;
+    missingToggle.textContent = showMissing ? "미수신 종목 숨기기" : "미수신 종목 보기";
+    missingToggle.setAttribute("aria-pressed", String(showMissing));
+  }
+  if(listEmpty) listEmpty.hidden = visible !== 0;
+}
 
 function setFilter(mode){
   currentFilterMode = mode;
-  filterAll.classList.toggle("on", mode==="ALL");
-  filterKospi.classList.toggle("on", mode==="KOSPI");
-  filterKor.classList.toggle("on", mode==="KOR");
-  filterCrypto.classList.toggle("on", mode==="Crypto");
-  filterStock.classList.toggle("on", mode==="Stock");
-  filterIndex.classList.toggle("on", mode==="Index");
-  filterFX.classList.toggle("on", mode==="FX");
-  filterCommo.classList.toggle("on", mode==="Commodity");
-  filterEnergy.classList.toggle("on", mode==="Energy");
+  for(const [button, value] of FILTER_BUTTONS){
+    if(!button) continue;
+    const on = value === mode;
+    button.classList.toggle("on", on);
+    button.setAttribute("aria-pressed", String(on));
+  }
 
   // 메모리 보드는 '전체'·'메모리' 탭에서만 노출, 그 외 카테고리 탭에선 숨김
-  if(kospiBoard) kospiBoard.style.display = (mode==="ALL" || mode==="KOSPI") ? "" : "none";
+  const hasQuery = !!searchQuery.trim();
+  if(kospiBoard) kospiBoard.style.display = (!hasQuery && (mode==="ALL" || mode==="KOSPI")) ? "" : "none";
   // 삼전하닉 도미넌스(24h) + 코스피200 야간선물 보드는 '코스피' 탭에서만 노출
   if(domBoard) domBoard.style.display = (mode==="KOR") ? "" : "none";
   if(nightBoard) nightBoard.style.display = (mode==="KOR") ? "" : "none";
@@ -1265,44 +1605,54 @@ function setFilter(mode){
   if(mode !== "Stock") setStockSub("ALL");
   if(stockSub) stockSub.classList.toggle("show", mode === "Stock");
 
-  const q = searchQuery.trim().toUpperCase();
   for(const {row} of rows.values()){
-    const t = row.dataset.type;
-    const matches = q
-      ? (row.dataset.search || "").includes(q)   // 검색 중엔 카테고리 무시, 텍스트 일치만
-      : (
-          (mode==="ALL") ||
-          (mode==="KOSPI" && row.dataset.kospi==="1") ||
-          (mode==="KOR" && row.dataset.kor==="1") ||
-          (mode==="Crypto" && t==="Crypto") ||
-          (mode==="Stock" && t==="Stock" && (stockSubFilter==="ALL" || row.dataset.stockGroup===stockSubFilter)) ||
-          (mode==="Index" && t==="Index") ||
-          (mode==="FX" && t==="FX") ||
-          (mode==="Energy" && t==="Energy") ||
-          (mode==="Commodity" && t==="Commodity")
-        );
-    // 시세를 못 받은 MEXC 행(dead)은 숨김
-    row.style.display = (matches && row.dataset.dead !== "1") ? "" : "none";
+    const matches = rowMatchesMode(row, mode) && rowMatchesQuery(row);
+    const allowedByQuality = showMissing || row.dataset.dead !== "1";
+    row.style.display = (matches && allowedByQuality) ? "" : "none";
   }
   applySort();
+  updateMarketSummary();
 }
 
 /* ===== 시세 미수신 MEXC 행 자동 숨김('-' 클러터 제거) ===== */
 let deadPruneTimer = null;
 function pruneDeadMexc(){
-  for(const { row, def } of rows.values()){
-    if(def.ex !== "MEXC") continue;
-    if(def.type !== "Stock" && def.type !== "Index" && def.type !== "Commodity") continue;
-    row.dataset.dead = lastValue.has(def.id) ? "0" : "1";
+  pruneComplete = true;
+  mexcWarmupActive = false;
+  for(const [id, { row, def }] of rows){
+    const sessionTracked = def.ex === "MEXC" &&
+      (def.type === "Stock" || def.type === "Index" || def.type === "Commodity" || def.type === "Energy");
+    row.dataset.dead = sessionTracked
+      ? (mexcSeenIds.has(id) && quoteQuality(lastValue.get(id)) !== "missing" ? "0" : "1")
+      : (quoteQuality(lastValue.get(id)) === "missing" ? "1" : "0");
   }
   setFilter(currentFilterMode);
+}
+function scheduleInitialPrune(delay=12000){
+  if(deadPruneTimer) clearTimeout(deadPruneTimer);
+  deadPruneTimer = setTimeout(pruneDeadMexc, delay);
 }
 function resetDeadFlags(){
   for(const { row } of rows.values()) if(row.dataset.dead === "1") row.dataset.dead = "0";
 }
+let visibilityRefreshPending = false;
+function scheduleVisibilityRefresh(){
+  if(visibilityRefreshPending) return;
+  visibilityRefreshPending = true;
+  requestAnimationFrame(()=>{
+    visibilityRefreshPending = false;
+    setFilter(currentFilterMode);
+  });
+}
+if(missingToggle){
+  missingToggle.addEventListener("click", ()=>{
+    showMissing = !showMissing;
+    setFilter(currentFilterMode);
+  });
+}
 
 /* ===== 코스피200 야간선물 보드 (Cloudflare Worker 프록시 경유) ===== */
-let nightTimer = null, nightInFlight = false, nightLastOk = false, nightView = "";
+let nightTimer = null, nightInFlight = false, nightLastOk = false, nightView = "", nightLastData = null;
 // 삼전하닉 도미넌스 = (A×삼성원화 + B×하닉원화) / 코스피지수  (기준 2026.06.29 ≈ 54.79%)
 const DOM_A = 0.7149386337, DOM_B = 0.08715603249;
 let nightKospi = { value: NaN, change: NaN, pct: NaN, source: "" };  // 워커가 주는 코스피 종합지수(분모) + 일간 등락 캐시
@@ -1370,17 +1720,34 @@ function renderNight(s){
   }
   if(s.kind === "loading"){
     nightSrc.textContent = "불러오는 중…";
-    if(!nightLastOk) nightFutCard.innerHTML = nightCardHTML({ price:"…", deltaText:"불러오는 중", live:false, foot:"연결 중" });
+    if(!nightLastOk && !nightLastData) nightFutCard.innerHTML = nightCardHTML({ price:"…", deltaText:"불러오는 중", live:false, foot:"연결 중" });
     return;
   }
   if(s.kind === "error"){
-    nightSrc.textContent = "오류";
-    if(!nightLastOk) nightFutCard.innerHTML = nightCardHTML({ price:"-", deltaText:"데이터 없음", live:false, foot:"실패 · 재시도 예정" });
-    nightNote.textContent = "야간선물 데이터를 불러오지 못했어요. 잠시 후 다시 시도해요.";
+    nightSrc.textContent = nightLastData ? "지연" : "오류";
+    if(nightLastData && isFinite(nightLastData.last)){
+      const d = nightLastData;
+      const hasChg = isFinite(d.change) || isFinite(d.changePct);
+      const up = (isFinite(d.change) ? d.change : d.changePct) >= 0;
+      const pts = isFinite(d.change) ? fmtPrice(Math.abs(d.change)) : "";
+      const pct = isFinite(d.changePct) ? Math.abs(d.changePct).toFixed(2) + "%" : "";
+      const delta = pts && pct ? `${pts} (${pct})` : (pts || pct);
+      nightFutCard.innerHTML = nightCardHTML({
+        price:fmtPrice(d.last),
+        deltaText:hasChg ? (up ? "▲ " : "▼ ") + delta : "전일 대비 –",
+        deltaCls:hasChg ? (up ? "up" : "down") : "",
+        live:false,
+        foot:"마지막 정상값 " + ageText(d.receivedAt) + " · 재시도 예정"
+      });
+    }else{
+      nightFutCard.innerHTML = nightCardHTML({ price:"-", deltaText:"데이터 없음", live:false, foot:"실패 · 재시도 예정" });
+    }
+    nightNote.textContent = "야간선물 연결이 지연되고 있어 마지막 정상값을 구분해 표시해요. 잠시 후 다시 시도합니다.";
     return;
   }
   // ok
   const d = s.data;
+  nightLastData = { ...d, receivedAt:Date.now() };
   const hasChg = isFinite(d.change) || isFinite(d.changePct);
   const up = (isFinite(d.change) ? d.change : d.changePct) >= 0;
   const pts = isFinite(d.change) ? fmtPrice(Math.abs(d.change)) : null;
@@ -1515,7 +1882,14 @@ async function pollNight(){
     // 코스피 지수는 장중(09~16시)이거나 아직 캐시 전일 때만 요청. 장 마감 후엔 마감값 유지(?kospi=0).
     const wantKospi = isKospiLive() || !isFinite(nightKospi.value);
     const url = KOSPI_NIGHT_PROXY_URL + (KOSPI_NIGHT_PROXY_URL.includes("?") ? "&" : "?") + "kospi=" + (wantKospi ? "1" : "0");
-    const res = await fetch(url, { cache:"no-store" });
+    const controller = new AbortController();
+    const timeout = setTimeout(()=>controller.abort(), 12000);
+    let res;
+    try{
+      res = await fetch(url, { cache:"no-store", signal:controller.signal });
+    }finally{
+      clearTimeout(timeout);
+    }
     if(!res.ok) throw new Error("HTTP " + res.status);
     const j = await res.json();
     const kv = nightNum(j.kospi);
@@ -1536,7 +1910,7 @@ async function pollNight(){
     }
     renderDominance();
   }catch(e){
-    if(inSession) renderNight({ kind:"error", msg:String(e && e.message || e) });
+    if(inSession){ nightLastOk = false; renderNight({ kind:"error", msg:String(e && e.message || e) }); }
     renderDominance();
   }finally{
     nightInFlight = false;
@@ -1558,12 +1932,11 @@ startNight();
 if(searchInput){
   searchInput.addEventListener("input", ()=>{ searchQuery = searchInput.value || ""; setFilter(currentFilterMode); });
 }
-// 카테고리 탭을 누르면 검색어를 비우고 해당 탭으로(검색과 탭이 서로 충돌하지 않게)
 function pickCategory(mode){
-  if(searchQuery){ searchQuery = ""; if(searchInput) searchInput.value = ""; }
   setFilter(mode);
 }
 filterAll.onclick    = () => pickCategory("ALL");
+filterFav.onclick    = () => pickCategory("FAV");
 filterKor.onclick    = () => pickCategory("KOR");
 filterKospi.onclick  = () => pickCategory("KOSPI");
 filterCrypto.onclick = () => pickCategory("Crypto");
@@ -1578,15 +1951,21 @@ const stockSub = document.getElementById("stockSub");
 let stockSubFilter = "ALL";
 function setStockSub(key){
   stockSubFilter = key;
-  for(const el of stockSub.querySelectorAll(".subchip")) el.classList.toggle("on", el.dataset.key === key);
+  for(const el of stockSub.querySelectorAll(".subchip")){
+    const on = el.dataset.key === key;
+    el.classList.toggle("on", on);
+    el.setAttribute("aria-pressed", String(on));
+  }
 }
 (function buildStockSubFilters(){
   const lab = document.createElement("span"); lab.className = "slabel"; lab.textContent = "분류";
   stockSub.appendChild(lab);
   const add = (key, text)=>{
-    const c = document.createElement("div");
+    const c = document.createElement("button");
+    c.type = "button";
     c.className = "subchip" + (key === "ALL" ? " on" : "");
     c.textContent = text; c.dataset.key = key;
+    c.setAttribute("aria-pressed", String(key === "ALL"));
     c.onclick = ()=>{ setStockSub(key); setFilter("Stock"); };
     stockSub.appendChild(c);
   };
@@ -1647,18 +2026,42 @@ function headerSort(key){
   setSortMode(next);
 }
 function updateSortIndicators(){
+  const labels = { name:"종목명", price:"현재가", vol:"24시간 거래대금", chg:"등락" };
   document.querySelectorAll("#hdr .hcell.sortable").forEach(cell => {
     const modes = SORT_KEY_MODES[cell.dataset.sortkey];
     const arrow = cell.querySelector(".sortArrow");
     const active = !!(modes && modes.includes(sortMode));
+    const direction = active ? (sortMode === modes[0] ? "오름차순" : "내림차순") : "정렬 안 됨";
     cell.classList.toggle("activeSort", active);
     if(arrow) arrow.textContent = active ? (sortMode === modes[0] ? "↑" : "↓") : "↕";
+    cell.setAttribute("aria-label", `${labels[cell.dataset.sortkey] || "열"} · ${direction}. 눌러서 정렬`);
   });
 }
 document.querySelectorAll("#hdr .hcell.sortable").forEach(cell => {
+  cell.tabIndex = 0;
+  cell.setAttribute("role", "button");
   cell.addEventListener("click", () => headerSort(cell.dataset.sortkey));
+  cell.addEventListener("keydown", (e)=>{
+    if(e.key === "Enter" || e.key === " "){
+      e.preventDefault();
+      headerSort(cell.dataset.sortkey);
+    }
+  });
 });
 updateSortIndicators();
+
+/* sticky 탐색 도크 높이를 테이블 헤더의 고정 위치와 동기화 */
+const controlDock = document.getElementById("controlDock");
+const appWrap = document.querySelector(".wrap");
+function syncDockHeight(){
+  if(!controlDock || !appWrap) return;
+  appWrap.style.setProperty("--dock-h", Math.ceil(controlDock.getBoundingClientRect().height) + "px");
+}
+if(controlDock){
+  syncDockHeight();
+  if("ResizeObserver" in window) new ResizeObserver(syncDockHeight).observe(controlDock);
+  window.addEventListener("resize", syncDockHeight);
+}
 
 /* ===== Render ===== */
 function scheduleRender(){
@@ -1671,21 +2074,39 @@ function scheduleRender(){
       const v = lastValue.get(id);
       if(!r || !v) continue;
 
-      const isUp = v.pct >= 0;
+      const hasPct = isFinite(v.pct);
+      const isUp = hasPct && v.pct > 0;
+      const isDown = hasPct && v.pct < 0;
+      const quality = quoteQuality(v);
+      const volumeQuality = statsQuality(v);
+      const hasVolume = isFinite(v.vol) && volumeQuality !== "missing";
       r.priceEl.textContent = fmtPrice(v.last);
-      r.volEl.textContent = isFinite(v.vol) ? (fmtVol(v.vol) + " USDT") : "-";
+      r.volEl.textContent = hasVolume
+        ? (fmtVol(v.vol) + (v.volUnit === "CONTRACT" ? " 계약" : v.volUnit === "USDT" ? " USDT" : ""))
+        : "-";
+      r.volEl.title = hasVolume
+        ? `24시간 거래 정보 출처: ${v.statsSrc || v.src || "-"} · ${volumeQuality === "live" ? "실시간" : ageText(v.statsTs) + " 지연"}`
+        : "24시간 거래 정보 미수신 또는 만료";
 
       r.chgEl.textContent = fmtPct(v.pct);
       r.chgEl.classList.toggle("up", isUp);
-      r.chgEl.classList.toggle("down", !isUp);
+      r.chgEl.classList.toggle("down", isDown);
+      r.chgEl.title = quoteBasisLabel(v);
+      r.sourceEl.textContent = quoteSourceLabel(v) + " · " + (quality === "live" ? "실시간" : quality === "stale" ? ageText(v.ts) + " 지연" : "오래됨");
+      r.sourceEl.className = "quoteMeta " + quality + (v.src === "HYPER" || v.src === "COINGECKO" ? " fallback" : "");
+      r.sourceEl.title = `현재 가격 출처: ${v.src || "-"} · 상품/차트 기준: ${r.def.ex} · 마지막 가격 ${ageText(v.ts)}`;
+      r.row.dataset.quality = quality;
+      r.openEl.setAttribute("aria-label", `${r.def.krLabel || r.def.label || r.def.base}, 현재가 ${fmtPrice(v.last)}, ${hasPct ? fmtPct(v.pct) : "등락 정보 없음"}, ${quoteSourceLabel(v)}. TradingView 차트 열기`);
 
       r.row.dataset.sortChg = String(isFinite(v.pct) ? v.pct : -999999);
-      r.row.dataset.sortVol = String(isFinite(v.vol) ? v.vol : -999999);
+      r.row.dataset.sortVol = String(hasVolume && v.volUnit === "USDT" ? v.vol : -999999);
       r.row.dataset.sortPrice = String(isFinite(v.last) ? v.last : -999999);
+      if(currentTvInstrument && currentTvInstrument.id === id && tvView.style.display === "block") syncTvSubtitle(currentTvInstrument, v);
     }
     pendingRender.clear();
     updateAllKospiCards();
-    applySort();
+    if(sortMode !== "default") applySort();
+    updateMarketSummary();
   });
 }
 
@@ -1703,21 +2124,83 @@ function resolvePct(id, last, fallbackPct, dayOpen){
   return NaN;
 }
 
-function applyUpdate(id, last, pct, vol, dayOpen, src, usePctDirect){
+function applyUpdate(id, last, pct, vol, dayOpen, src, usePctDirect, volUnit, sourceTs){
   let resolvedPct = resolvePct(id, last, pct, dayOpen);
   // 일봉 시가가 아직 없을 때 CoinGecko 24h 변동률 같은 값을 그대로 사용(usePctDirect)
   if(!isFinite(resolvedPct) && usePctDirect && isFinite(pct)) resolvedPct = pct;
   const prev = lastValue.get(id);
+  const receivedAt = Date.now();
+  const priceTs = normalizeSourceTimestamp(sourceTs, receivedAt);
+  const hasDailyOpen = isFinite(dailyOpenById.get(id)) && dailyOpenById.get(id) > 0;
+  const pctBasis = krxRefOpenById.has(id) ? "KRX_CLOSE"
+    : (hasDailyOpen && isFinite(resolvedPct) ? "DAY_OPEN"
+      : (usePctDirect && isFinite(pct) ? "24H" : (prev ? prev.pctBasis : "")));
   lastValue.set(id, {
     last,
     pct: resolvedPct,
     vol: isFinite(vol) ? vol : (prev ? prev.vol : NaN),
-    ts: Date.now(),
-    src: src || (prev ? prev.src : undefined)
+    volUnit: isFinite(vol) ? (volUnit || "USDT") : (prev ? prev.volUnit : undefined),
+    ts: priceTs,
+    receivedAt,
+    src: src || (prev ? prev.src : undefined),
+    statsSrc: isFinite(vol) ? (src || (prev ? prev.statsSrc : undefined)) : (prev ? prev.statsSrc : undefined),
+    statsTs: isFinite(vol) ? priceTs : (prev ? prev.statsTs : undefined),
+    pctBasis
+  });
+  const meta = rows.get(id);
+  if(meta && meta.row.dataset.dead === "1"){
+    meta.row.dataset.dead = "0";
+    scheduleVisibilityRefresh();
+  }
+  pendingRender.add(id);
+  scheduleRender();
+}
+function recomputeStoredQuote(id, dayOpen){
+  const cur = lastValue.get(id);
+  if(!cur || !isFinite(cur.last)) return;
+  if(isFinite(dayOpen) && dayOpen > 0) dailyOpenById.set(id, dayOpen);
+  const pct = resolvePct(id, cur.last, NaN, dayOpen);
+  lastValue.set(id, {
+    ...cur,
+    pct,
+    pctBasis: krxRefOpenById.has(id) ? "KRX_CLOSE" : (isFinite(pct) ? "DAY_OPEN" : cur.pctBasis)
   });
   pendingRender.add(id);
   scheduleRender();
 }
+function mergeMarketStats(id, vol, volUnit, statsSrc, sourceTs){
+  const cur = lastValue.get(id);
+  if(!cur) return;
+  const receivedAt = Date.now();
+  lastValue.set(id, {
+    ...cur,
+    vol: isFinite(vol) ? vol : cur.vol,
+    volUnit: isFinite(vol) ? (volUnit || cur.volUnit) : cur.volUnit,
+    statsSrc: statsSrc || cur.statsSrc,
+    statsTs: isFinite(vol) ? normalizeSourceTimestamp(sourceTs, receivedAt) : cur.statsTs,
+    statsReceivedAt: isFinite(vol) ? receivedAt : cur.statsReceivedAt
+  });
+  pendingRender.add(id);
+  scheduleRender();
+}
+function refreshQuoteHealth(){
+  for(const [id, v] of lastValue){
+    if(rows.has(id)) pendingRender.add(id);
+  }
+  if(pruneComplete){
+    for(const [id, {row, def}] of rows){
+      const sessionTracked = def.ex === "MEXC" &&
+        (def.type === "Stock" || def.type === "Index" || def.type === "Commodity" || def.type === "Energy");
+      if(sessionTracked && mexcWarmupActive) continue;
+      row.dataset.dead = sessionTracked
+        ? (mexcSeenIds.has(id) && quoteQuality(lastValue.get(id)) !== "missing" ? "0" : "1")
+        : (quoteQuality(lastValue.get(id)) === "missing" ? "1" : "0");
+    }
+  }
+  scheduleRender();
+  if(pruneComplete) scheduleVisibilityRefresh();
+}
+setInterval(refreshQuoteHealth, 10000);
 
 /* ===== Binance WS ===== */
 let wsBinance=null, binanceTimer=null, binanceBackoff=800;
@@ -1728,28 +2211,28 @@ function connectBinance(){
   const bases = [...BINANCE_SYMBOLS.crypto];
   const streams = bases.flatMap(s => [s.toLowerCase()+"@ticker", s.toLowerCase()+"@kline_1d"]);
   if(!streams.length){ queueBinanceReconnect(); return; }
-  const url = "wss://fstream.binance.com/ws";
+  const url = "wss://fstream.binance.com/market/stream?streams=" + streams.join("/");
 
-  setDot(dotBinance,"DEAD");
-  try{ wsBinance = new WebSocket(url); }catch(e){ queueBinanceReconnect(); return; }
+  markFeedOpening("BINANCE");
+  let socket;
+  try{ socket = new WebSocket(url); wsBinance = socket; }
+  catch(e){ markFeedClosed("BINANCE"); queueBinanceReconnect(); return; }
 
-  wsBinance.onopen = ()=>{
-    binanceBackoff=800;
-    setDot(dotBinance,"LIVE");
-    const CHUNK = 80; // 10msg/s 제한 고려해서 큰 덩어리로 전송
-    for(let i=0; i<streams.length; i+=CHUNK){
-      wsBinance.send(JSON.stringify({
-        method: "SUBSCRIBE",
-        params: streams.slice(i, i+CHUNK),
-        id: Math.floor(i/CHUNK)+1
-      }));
-    }
+  socket.onopen = ()=>{
+    if(wsBinance !== socket) return;
+    markFeedOpening("BINANCE");
   };
-  wsBinance.onmessage = (ev)=>{
+  socket.onmessage = (ev)=>{
+    if(wsBinance !== socket) return;
     try{
       const msg = JSON.parse(ev.data);
       if(!msg || typeof msg !== "object") return;
-      if(msg.id !== undefined || msg.result === null) return; // SUBSCRIBE ack/에러 응답
+      if(msg.code !== undefined || msg.error){
+        markFeedClosed("BINANCE");
+        try{ socket.close(); }catch(_){}
+        return;
+      }
+      if(msg.id !== undefined || msg.result === null) return; // SUBSCRIBE ack
       const d = msg.data || msg;   // /stream(래핑) vs /ws(raw) 둘 다 대응
       if(!d || typeof d !== "object") return;
 
@@ -1761,7 +2244,11 @@ function connectBinance(){
         const dayOpen = parseFloat(d.k.o);
         if(isFinite(dayOpen) && dayOpen > 0) dailyOpenById.set(id, dayOpen);
         const kc = parseFloat(d.k.c);
-        if(isFinite(kc)) applyUpdate(id, kc, NaN, NaN, dayOpen, "BINANCE");
+        if(isFinite(kc)){
+          binanceBackoff=800;
+          markFeedTick("BINANCE");
+          applyUpdate(id, kc, NaN, NaN, dayOpen, "BINANCE");
+        }
         return;
       }
 
@@ -1769,13 +2256,26 @@ function connectBinance(){
       if(d.s && (d.e === "24hrTicker" || d.c !== undefined)){
         const id = "B:" + d.s;
         const last = parseFloat(d.c), vol = parseFloat(d.q);
-        if(isFinite(last)) applyUpdate(id, last, NaN, vol, NaN, "BINANCE");
+        if(isFinite(last)){
+          binanceBackoff=800;
+          markFeedTick("BINANCE");
+          applyUpdate(id, last, NaN, vol, NaN, "BINANCE", false, "USDT");
+        }
         return;
       }
     }catch(_){}
   };
-  wsBinance.onerror = ()=>setDot(dotBinance,"DEAD");
-  wsBinance.onclose = ()=>{ setDot(dotBinance,"DEAD"); queueBinanceReconnect(); };
+  socket.onerror = ()=>{
+    if(wsBinance !== socket) return;
+    markFeedClosed("BINANCE");
+    try{ socket.close(); }catch(_){}
+  };
+  socket.onclose = ()=>{
+    if(wsBinance !== socket) return;
+    wsBinance = null;
+    markFeedClosed("BINANCE");
+    queueBinanceReconnect();
+  };
 }
 function queueBinanceReconnect(){
   if(binanceTimer) return;
@@ -1789,7 +2289,6 @@ function queueBinanceReconnect(){
 /* ===== Hyperliquid WS (크립토 메이저 폴백 · 한국에서도 접속 가능) =====
    바이낸스 선물은 한국에서 접속이 막혀(geo-block) 크립토가 비어 보일 수 있어요.
    Hyperliquid allMids 로 빈 자리를 채우고, 바이낸스가 4초 내 갱신 중이면 양보해요. */
-const dotHyper = document.getElementById("dotHyper");
 let wsHyper=null, hyperTimer=null, hyperBackoff=800, hyperPing=null;
 const HYPER_TO_ID = new Map(); // Hyperliquid 코인명 -> 인스트루먼트 id
 for(const s of BINANCE_SYMBOLS.crypto){
@@ -1799,23 +2298,30 @@ function connectHyperliquid(){
   if(wsHyper && (wsHyper.readyState===WebSocket.OPEN || wsHyper.readyState===WebSocket.CONNECTING)) return;
   if(hyperTimer){ clearTimeout(hyperTimer); hyperTimer=null; }
   if(hyperPing){ clearInterval(hyperPing); hyperPing=null; }
-  setDot(dotHyper,"DEAD");
-  try{ wsHyper = new WebSocket("wss://api.hyperliquid.xyz/ws"); }
-  catch(e){ queueHyperReconnect(); return; }
+  markFeedOpening("HYPER");
+  let socket;
+  try{ socket = new WebSocket("wss://api.hyperliquid.xyz/ws"); wsHyper = socket; }
+  catch(e){ markFeedClosed("HYPER"); queueHyperReconnect(); return; }
 
-  wsHyper.onopen = ()=>{
-    hyperBackoff=800;
-    setDot(dotHyper,"LIVE");
-    try{ wsHyper.send(JSON.stringify({ method:"subscribe", subscription:{ type:"allMids" } })); }catch(_){}
+  socket.onopen = ()=>{
+    if(wsHyper !== socket) return;
+    markFeedOpening("HYPER");
+    try{ socket.send(JSON.stringify({ method:"subscribe", subscription:{ type:"allMids" } })); }catch(_){}
     // Hyperliquid는 클라이언트가 일정시간 침묵하면 연결을 끊어요 → 30초마다 ping으로 유지
     if(hyperPing) clearInterval(hyperPing);
-    hyperPing = setInterval(()=>{ try{ wsHyper.send(JSON.stringify({ method:"ping" })); }catch(_){ } }, 30000);
+    hyperPing = setInterval(()=>{
+      if(wsHyper !== socket) return;
+      try{ socket.send(JSON.stringify({ method:"ping" })); }catch(_){ }
+    }, 30000);
   };
-  wsHyper.onmessage = (ev)=>{
+  socket.onmessage = (ev)=>{
+    if(wsHyper !== socket) return;
     try{
       const msg = JSON.parse(ev.data);
       if(!msg || msg.channel !== "allMids" || !msg.data || !msg.data.mids) return;
       const mids = msg.data.mids;
+      hyperBackoff=800;
+      markFeedTick("HYPER");
       const now = Date.now();
       for(const [coin, id] of HYPER_TO_ID){
         const px = parseFloat(mids[coin]);
@@ -1826,8 +2332,18 @@ function connectHyperliquid(){
       }
     }catch(_){}
   };
-  wsHyper.onerror = ()=>setDot(dotHyper,"DEAD");
-  wsHyper.onclose = ()=>{ setDot(dotHyper,"DEAD"); if(hyperPing){clearInterval(hyperPing); hyperPing=null;} queueHyperReconnect(); };
+  socket.onerror = ()=>{
+    if(wsHyper !== socket) return;
+    markFeedClosed("HYPER");
+    try{ socket.close(); }catch(_){}
+  };
+  socket.onclose = ()=>{
+    if(wsHyper !== socket) return;
+    wsHyper = null;
+    markFeedClosed("HYPER");
+    if(hyperPing){clearInterval(hyperPing); hyperPing=null;}
+    queueHyperReconnect();
+  };
 }
 function queueHyperReconnect(){
   if(hyperTimer) return;
@@ -1839,45 +2355,201 @@ function queueHyperReconnect(){
 }
 
 /* ===== MEXC WS ===== */
-let wsMexc=null, mexcTimer=null, mexcBackoff=800, mexcPing=null, mexcSubTimer=null;
+let wsMexc=null, mexcTimer=null, mexcBackoff=800, mexcPing=null, mexcResolveTimer=null, mexcMetaController=null;
 let frankfurterTimer=null;
 const mexcSymbolToId = new Map(); // subscribedSymbol -> instrumentId (ticker)
 const fxState = new Map();
 const mexcStockMap = new Map();   // base -> STOCK_USDT
 const mexcContracts = new Set();   // 워밍업에서 발견한 모든 *_USDT 계약 심볼
+const mexcStockSymbols = new Set();// STOCK 접미사 또는 계약 메타데이터로 주식임을 확인한 심볼
+const mexcRejectedSymbols = new Set(); // 중단·인도·숨김·비무기한으로 확인된 계약
 const mexcTickerToSym = new Map(); // 표시 티커 -> 실제 계약심볼(예: TSLA -> TESLA_USDT)
 const mexcLiveSymById = new Map(); // 종목 id -> 현재 살아있는(틱 도착) 실제 MEXC 계약심볼
 
-// ✅ Day1 kline 매핑
-const mexcKlineToIds = new Map();     // symbol -> Set(instrumentId)
-const mexcKlineSubscribed = new Set(); // symbol already sub.kline Day1
+const mexcSeenIds = new Set();         // 현재 연결 세션에서 실제 틱을 받은 instrumentId
 
 const CONTRACT_WARMUP_MS = 2500;
+const mexcWarmupTimers = [];
+
+function clearMexcDiscoveryTimers(){
+  while(mexcWarmupTimers.length) clearTimeout(mexcWarmupTimers.pop());
+  if(mexcResolveTimer){ clearTimeout(mexcResolveTimer); mexcResolveTimer=null; }
+}
+function scheduleMexcResolve(socket, delay=300){
+  if(mexcResolveTimer) clearTimeout(mexcResolveTimer);
+  mexcResolveTimer = setTimeout(()=>{
+    mexcResolveTimer = null;
+    if(wsMexc === socket && socket.readyState === WebSocket.OPEN) subscribeMexcFinal();
+  }, delay);
+}
+function registerMexcContract(data, socket, schedule=true){
+  if(!data || typeof data !== "object") return false;
+  const sym = data.symbol;
+  if(typeof sym !== "string" || !sym.endsWith("_USDT")) return false;
+  const isOpen = data.state === undefined || Number(data.state) === 0;
+  const isPerpetual = data.futureType === undefined || Number(data.futureType) === 1;
+  const isVisible = data.isHidden !== true && Number(data.isHidden) !== 1;
+  const isActivePair = data.type === undefined || Number(data.type) === 1;
+  if(!isOpen || !isPerpetual || !isVisible || !isActivePair){
+    mexcRejectedSymbols.add(sym);
+    mexcContracts.delete(sym);
+    mexcStockSymbols.delete(sym);
+    const mappedId = mexcSymbolToId.get(sym);
+    if(mappedId && mappedId !== "__FX_BASE__"){
+      mexcSymbolToId.delete(sym);
+      mexcSeenIds.delete(mappedId);
+    }
+    for(const [ticker, mappedSym] of mexcTickerToSym){
+      if(mappedSym === sym) mexcTickerToSym.delete(ticker);
+    }
+    if(schedule) scheduleMexcResolve(socket);
+    return false;
+  }
+
+  mexcRejectedSymbols.delete(sym);
+  mexcContracts.add(sym);
+  const isStockContract = sym.endsWith("STOCK_USDT") || Number(data.typeLabel) === 2;
+  if(isStockContract){
+    mexcStockSymbols.add(sym);
+    if(sym.endsWith("STOCK_USDT")) mexcStockMap.set(sym.replace("STOCK_USDT",""), sym);
+  }
+
+  const tickerNames = [data.baseCoin, data.displayNameEn, data.displayName];
+  for(const raw of tickerNames){
+    if(typeof raw !== "string" || !raw) continue;
+    const tk = raw.toUpperCase().replace(/[^A-Z0-9]/g,"").replace(/USDT.*$/,"").replace(/PERPETUAL.*$/,"").replace(/PERP$/,"");
+    const existing = mexcTickerToSym.get(tk);
+    if(tk && tk.length<=12 && (!existing || (isStockContract && !mexcStockSymbols.has(existing)))) mexcTickerToSym.set(tk, sym);
+  }
+  if(schedule) scheduleMexcResolve(socket);
+  return true;
+}
+function mexcContractList(payload){
+  if(Array.isArray(payload)) return payload;
+  if(!payload || typeof payload !== "object") return [];
+  for(const key of ["list","rows","contracts","resultList"]){
+    if(Array.isArray(payload[key])) return payload[key];
+  }
+  if(payload.symbol) return [payload];
+  return Object.values(payload).filter(v => v && typeof v === "object" && v.symbol);
+}
+async function seedMexcContractMetadata(socket){
+  if(mexcMetaController) try{ mexcMetaController.abort(); }catch(_){}
+  const controller = typeof AbortController === "function" ? new AbortController() : null;
+  mexcMetaController = controller;
+  const timeout = controller ? setTimeout(()=>controller.abort(), 8000) : null;
+  try{
+    const options = { cache:"no-store" };
+    if(controller) options.signal = controller.signal;
+    const res = await fetch("https://contract.mexc.com/api/v1/contract/detail/country", options);
+    if(!res.ok) throw new Error("MEXC contract metadata " + res.status);
+    const body = await res.json();
+    if(wsMexc !== socket || socket.readyState !== WebSocket.OPEN) return;
+    const contracts = mexcContractList(body && body.data);
+    for(const contract of contracts) registerMexcContract(contract, socket, false);
+    if(contracts.length) scheduleMexcResolve(socket, 0);
+  }catch(err){
+    if(wsMexc === socket && (!err || err.name !== "AbortError")) scheduleMexcResolve(socket);
+  }finally{
+    if(timeout) clearTimeout(timeout);
+    if(mexcMetaController === controller) mexcMetaController = null;
+  }
+}
+
+function handleMexcTicker(data){
+  if(!data || typeof data !== "object") return;
+  const sym = data.symbol;
+  const last = parseFloat(data.lastPrice);
+  if(!sym || !isFinite(last)) return;
+  const receivedAt = Date.now();
+  const sourceTs = normalizeSourceTimestamp(data.timestamp, receivedAt);
+  if(typeof sym === "string" && sym.endsWith("_USDT") && !mexcRejectedSymbols.has(sym)){
+    mexcContracts.add(sym);
+    if(sym.endsWith("STOCK_USDT")){
+      mexcStockSymbols.add(sym);
+      mexcStockMap.set(sym.replace("STOCK_USDT",""), sym);
+    }
+  }
+
+  const rfr = parseFloat(data.riseFallRate);
+  const pct24h = isFinite(rfr) ? rfr * 100 : NaN;
+  const amount24 = parseFloat(data.amount24);
+  const contractVol = parseFloat(data.volume24);
+  const vol = isFinite(amount24) ? amount24 : (isFinite(contractVol) ? contractVol : NaN);
+  const volUnit = isFinite(amount24) ? "USDT" : (isFinite(contractVol) ? "CONTRACT" : undefined);
+
+  if(MEXC_FX_BASES.includes(sym) && isFinite(rfr)){
+    fxState.set(sym, { last, rfr, ts:sourceTs });
+    recomputeFx();
+  }
+  if(MEXC_KRW_SYMBOLS.includes(sym)){
+    const rate = mexcKrwRate(sym, last);
+    if(isFinite(rate) && rate > 0){
+      if(receivedAt-sourceTs <= QUOTE_TTL.MEXC) lastMexcKrwTs = receivedAt;
+      applyUpdate("FFX:USDKRW", rate, NaN, NaN, NaN, "MEXC", false, undefined, sourceTs);
+    }
+  }
+
+  const id = mexcSymbolToId.get(sym);
+  if(!id || id === "__FX_BASE__") return;
+  const cur = lastValue.get(id);
+  if(cur && cur.src === "MEXC" && isFinite(cur.ts) && sourceTs + 1000 < cur.ts) return;
+  if(cur && isFinite(cur.last) && cur.last > 0 && id.startsWith("M:")){
+    const ratio = last / cur.last;
+    if(ratio > 4 || ratio < 0.25) return;
+  }
+  mexcSeenIds.add(id);
+  if(id.startsWith("M:")) mexcLiveSymById.set(id, sym);
+
+  const cryptoYield = id.startsWith("B:") && cur &&
+    (cur.src==="BINANCE" || cur.src==="HYPER") && (Date.now()-cur.ts)<6000;
+  if(cryptoYield && cur.src === "HYPER"){
+    mergeMarketStats(id, vol, volUnit, "MEXC", sourceTs);
+  }else if(!cryptoYield){
+    // 공식 전체 티커의 24시간 등락률을 사용해 종목별 Day1 구독 폭주를 피한다.
+    // 한국주는 KRX 기준가가 있으면 resolvePct가 계속 그 값을 우선한다.
+    applyUpdate(id, last, pct24h, vol, NaN, "MEXC", true, volUnit, sourceTs);
+  }
+}
 
 function connectMexc(){
   if(wsMexc && (wsMexc.readyState===WebSocket.OPEN || wsMexc.readyState===WebSocket.CONNECTING)) return;
   if(mexcTimer){ clearTimeout(mexcTimer); mexcTimer=null; }
   if(mexcPing){ clearInterval(mexcPing); mexcPing=null; }
-  if(mexcSubTimer){ clearInterval(mexcSubTimer); mexcSubTimer=null; }
+  if(mexcMetaController){ try{ mexcMetaController.abort(); }catch(_){} mexcMetaController=null; }
+  clearMexcDiscoveryTimers();
 
   mexcSymbolToId.clear();
   fxState.clear();
   mexcStockMap.clear();
   mexcContracts.clear();
+  mexcStockSymbols.clear();
+  mexcRejectedSymbols.clear();
   mexcTickerToSym.clear();
   mexcLiveSymById.clear();
-  mexcKlineToIds.clear();
-  mexcKlineSubscribed.clear();
+  mexcSeenIds.clear();
+  if(!mexcWarmupActive){
+    mexcWarmupActive = true;
+    scheduleInitialPrune();
+  }
 
-  setDot(dotMexc,"DEAD");
-  try{ wsMexc = new WebSocket("wss://contract.mexc.com/edge"); }
-  catch(e){ queueMexcReconnect(); return; }
+  markFeedOpening("MEXC");
+  let socket;
+  try{ socket = new WebSocket("wss://contract.mexc.com/edge"); wsMexc = socket; }
+  catch(e){ markFeedClosed("MEXC"); queueMexcReconnect(); return; }
 
-  wsMexc.onopen = ()=>{
-    mexcBackoff=800;
-    setDot(dotMexc,"LIVE");
+  socket.onopen = ()=>{
+    if(wsMexc !== socket) return;
+    markFeedOpening("MEXC");
 
-    mexcPing = setInterval(()=>{ try{ wsMexc.send(JSON.stringify({method:"ping"})); }catch(_){ } }, 15000);
+    mexcPing = setInterval(()=>{
+      if(wsMexc !== socket) return;
+      try{ socket.send(JSON.stringify({method:"ping"})); }catch(_){ }
+    }, 15000);
+    // 공식 전체 티커 스트림: 수백 개 후보를 추측 구독하지 않고 실제 상장 계약만 2초마다 수신
+    socket.send(JSON.stringify({ method:"sub.tickers", param:{}, gzip:false }));
+    // 변경 이벤트형 sub.contract가 놓칠 수 있는 초기 전체 메타데이터를 공식 REST로 먼저 시드
+    seedMexcContractMetadata(socket);
 
     // FX base + USD/KRW 환율 먼저 구독
     for(const b of MEXC_FX_BASES){
@@ -1887,125 +2559,78 @@ function connectMexc(){
       mexcSubscribe(b, "__FX_BASE__");
     }
 
-    // 크립토 폴백(등락률용 일봉 시가 + 비상 가격) — 바이낸스 선물 차단 대비, MEXC로 보완
+    // 크립토 폴백(24시간 등락 + 비상 가격) — 바이낸스 선물 차단 대비, MEXC로 보완
     subscribeMexcCryptoFallback();
 
-    // ① 워밍업을 기다리지 않고 즉시 종목 구독 시작(코스피 우선) → 첫 로딩 체감 단축
-    subscribeMexcFinal();
-
-    // ② 동시에 contract 워밍업으로 STOCK 정확 심볼을 수집해 빠진 것만 보충
-    //    (이미 구독한 심볼은 자동으로 건너뛰어요)
-    wsMexc.send(JSON.stringify({ method:"sub.contract", gzip:false }));
-    setTimeout(()=> {
-      try{ wsMexc.send(JSON.stringify({ method:"unsub.contract" })); }catch(_){}
+    // contract 메타데이터로 실제 상장·표시명을 검증한 뒤 종목별 심볼을 하나만 매핑
+    socket.send(JSON.stringify({ method:"sub.contract", gzip:false }));
+    mexcWarmupTimers.push(setTimeout(()=> {
+      if(wsMexc !== socket) return;
       subscribeMexcFinal();
-    }, CONTRACT_WARMUP_MS);
+    }, CONTRACT_WARMUP_MS));
+    mexcWarmupTimers.push(setTimeout(()=> {
+      if(wsMexc !== socket) return;
+      subscribeMexcFinal();
+      try{ socket.send(JSON.stringify({ method:"unsub.contract" })); }catch(_){}
+    }, CONTRACT_WARMUP_MS + 3500));
 
     // (재)연결 시 이전 dead 플래그 초기화 후 현재 필터 재적용 → 숨겼던 행 다시 표시
-    resetDeadFlags();
-    setFilter(currentFilterMode);
-    // 충분히 기다린 뒤(16초) 시세를 못 받은 MEXC 행은 숨김('-' 클러터 제거)
-    if(deadPruneTimer) clearTimeout(deadPruneTimer);
-    deadPruneTimer = setTimeout(pruneDeadMexc, 20000); // 구독 송신을 30ms로 늦춘 만큼 prune도 여유
+    if(!pruneComplete){
+      resetDeadFlags();
+      setFilter(currentFilterMode);
+    }
   };
 
-  wsMexc.onmessage = (ev)=>{
+  socket.onmessage = (ev)=>{
+    if(wsMexc !== socket) return;
     try{
       const msg = JSON.parse(ev.data);
       if(!msg) return;
 
       // 계약 스트림에서 전체 계약 심볼 + 표시명(티커) 매핑 수집
       if(msg.channel === "push.contract" && msg.data && msg.data.symbol){
-        const sym = msg.data.symbol;
-        if(typeof sym === "string" && sym.endsWith("_USDT")){
-          mexcContracts.add(sym);
-          if(sym.endsWith("STOCK_USDT")) mexcStockMap.set(sym.replace("STOCK_USDT",""), sym);
-          // 표시명에서 티커 추출 → 실제 계약심볼 매핑 (예: 표시 'TSLAUSDT' → 계약 'TESLA_USDT')
-          const dn = msg.data.displayNameEn || msg.data.displayName || "";
-          if(typeof dn === "string" && dn){
-            const tk = dn.toUpperCase().replace(/[^A-Z0-9]/g,"").replace(/USDT.*$/,"").replace(/PERP$/,"");
-            if(tk && tk.length>=1 && tk.length<=10 && !mexcTickerToSym.has(tk)) mexcTickerToSym.set(tk, sym);
-          }
-        }
+        registerMexcContract(msg.data, socket);
         return;
       }
 
-      // ✅ Day1 kline에서 일봉 시가 확보 (변동률 계산용)
-      if(msg.channel === "push.kline" && msg.data && msg.data.symbol){
-        const sym = msg.data.symbol;
-        const interval = msg.data.interval;
-
-        if(interval === "Day1"){
-          const dayOpen = parseFloat(msg.data.ro ?? msg.data.o);
-          if(isFinite(dayOpen) && dayOpen > 0){
-            const ids = mexcKlineToIds.get(sym);
-            if(ids){
-              for(const id of ids){
-                const cur = lastValue.get(id);
-                // 심볼 충돌 방어: 일봉 시가가 현재가와 5배 이상 차이나면(다른 자산) 무시
-                if(id.startsWith("M:") && cur && isFinite(cur.last) && cur.last > 0){
-                  const r = dayOpen / cur.last;
-                  if(r > 5 || r < 0.2) continue;
-                }
-                dailyOpenById.set(id, dayOpen);
-                // 이미 last가 있으면 즉시 변동률 재계산
-                if(cur && isFinite(cur.last)){
-                  applyUpdate(id, cur.last, NaN, cur.vol, dayOpen);
-                }
-              }
-            }
-          }
-        }
-        return;
-      }
-
-      // 티커 스트림(여기 riseFallRate는 24h라서 "일봉"엔 사용 안 함)
+      // 단일 티커 + 공식 전체 티커 스트림을 같은 정규화 함수로 처리
       if(msg.channel === "push.ticker" && msg.data){
-        const sym = msg.data.symbol || msg.symbol;
-        const last = parseFloat(msg.data.lastPrice);
-
-        const rfr  = parseFloat(msg.data.riseFallRate);
-        const pct24h  = isFinite(rfr) ? (rfr*100) : NaN;
-
-        const vol  = isFinite(parseFloat(msg.data.amount24)) ? parseFloat(msg.data.amount24)
-                  : isFinite(parseFloat(msg.data.volume24)) ? parseFloat(msg.data.volume24) : NaN;
-
-        if (MEXC_FX_BASES.includes(sym) && isFinite(last) && isFinite(rfr)){
-          fxState.set(sym, { last, rfr });
-          recomputeFx();
-        }
-
-        // USD/KRW 환율을 MEXC 심볼에서 직접 산출(있으면 MEXC 우선, Frankfurter는 폴백)
-        if (MEXC_KRW_SYMBOLS.includes(sym) && isFinite(last)){
-          const rate = mexcKrwRate(sym, last);
-          if(isFinite(rate) && rate > 0){
-            lastMexcKrwTs = Date.now();
-            applyUpdate("FFX:USDKRW", rate, NaN, NaN, NaN, "MEXC");
+        mexcBackoff=800;
+        markFeedTick("MEXC");
+        handleMexcTicker(msg.data);
+      }
+      if(msg.channel === "push.tickers" && Array.isArray(msg.data)){
+        let discovered = false;
+        for(const ticker of msg.data){
+          const sym = ticker && ticker.symbol;
+          if(typeof sym !== "string" || !sym.endsWith("_USDT") || mexcRejectedSymbols.has(sym)) continue;
+          if(!mexcContracts.has(sym)){ mexcContracts.add(sym); discovered = true; }
+          if(sym.endsWith("STOCK_USDT")){
+            mexcStockSymbols.add(sym);
+            mexcStockMap.set(sym.replace("STOCK_USDT",""), sym);
           }
         }
-
-        const id = mexcSymbolToId.get(sym);
-        if(id && id !== "__FX_BASE__" && isFinite(last)){
-          ensureMexcKline(sym); // 유효 심볼 확인됨 → 이제 일봉 kline 구독
-          const cur = lastValue.get(id);
-          // 심볼 충돌(동명 크립토 등)로 인한 비현실적 점프 무시 — MEXC 주식/지수 행이 한 틱에 4배↑ 변하면 다른 자산
-          if(cur && isFinite(cur.last) && cur.last > 0 && id.startsWith("M:")){
-            const ratio = last / cur.last;
-            if(ratio > 4 || ratio < 0.25) return;
-          }
-          // 이 심볼이 이 종목의 실제 살아있는 계약 → 전일 15:30 기준가 REST 조회에 사용
-          if(id.startsWith("M:")) mexcLiveSymById.set(id, sym);
-          // 크립토(B:*)는 Binance/Hyperliquid가 최신이면 MEXC 가격은 양보(폴백 전용) — 가격 깜빡임 방지
-          const cryptoYield = id.startsWith("B:") && cur && (cur.src==="BINANCE"||cur.src==="HYPER") && (Date.now()-cur.ts)<6000;
-          // dayOpen은 Day1 kline에서만 저장해서 일봉 기준으로 계산(시가 수신 전엔 '-')
-          if(!cryptoYield) applyUpdate(id, last, pct24h, vol, NaN, "MEXC");
-        }
+        if(discovered) subscribeMexcFinal();
+        mexcBackoff=800;
+        markFeedTick("MEXC");
+        for(const ticker of msg.data) handleMexcTicker(ticker);
       }
     }catch(_){}
   };
 
-  wsMexc.onerror = ()=>setDot(dotMexc,"DEAD");
-  wsMexc.onclose = ()=>{ setDot(dotMexc,"DEAD"); if(mexcPing){clearInterval(mexcPing); mexcPing=null;} queueMexcReconnect(); };
+  socket.onerror = ()=>{
+    if(wsMexc !== socket) return;
+    markFeedClosed("MEXC");
+    try{ socket.close(); }catch(_){}
+  };
+  socket.onclose = ()=>{
+    if(wsMexc !== socket) return;
+    wsMexc = null;
+    markFeedClosed("MEXC");
+    clearMexcDiscoveryTimers();
+    if(mexcPing){clearInterval(mexcPing); mexcPing=null;}
+    queueMexcReconnect();
+  };
 }
 function queueMexcReconnect(){
   if(mexcTimer) return;
@@ -2016,32 +2641,18 @@ function queueMexcReconnect(){
   }, mexcBackoff);
 }
 
-function mexcSubscribe(symbol, id){
+function mexcSubscribe(symbol, id, subscribeTicker=true){
   if(!wsMexc || wsMexc.readyState !== WebSocket.OPEN) return;
 
   // ticker 중복 구독 방지
   if(!mexcSymbolToId.has(symbol)){
     mexcSymbolToId.set(symbol, id);
-    wsMexc.send(JSON.stringify({ method:"sub.ticker", param:{symbol}, gzip:false }));
-  }
-
-  // ✅ Day1 kline은 ticker가 실제 도착한(유효한) 심볼에만 구독 → 초기 메시지 폭주/구독상한 방지
-  if(id !== "__FX_BASE__"){
-    if(!mexcKlineToIds.has(symbol)) mexcKlineToIds.set(symbol, new Set());
-    mexcKlineToIds.get(symbol).add(id);
+    if(subscribeTicker) wsMexc.send(JSON.stringify({ method:"sub.ticker", param:{symbol}, gzip:false }));
   }
 }
-function ensureMexcKline(symbol){
-  if(!wsMexc || wsMexc.readyState !== WebSocket.OPEN) return;
-  if(mexcKlineSubscribed.has(symbol) || !mexcKlineToIds.has(symbol)) return;
-  mexcKlineSubscribed.add(symbol);
-  wsMexc.send(JSON.stringify({ method:"sub.kline", param:{symbol, interval:"Day1"}, gzip:false }));
-}
 
-// 크립토 MEXC 폴백: 바이낸스 선물이 막히면 가격은 Hyperliquid(allMids)에서 오지만
-// 일봉 시가가 없어 등락률이 '-'로 남고, 코인이 Hyperliquid에 없으면 가격조차 안 뜸.
-// → MEXC에서 ticker(폴백 가격) + Day1 kline(일봉 시가)을 받아 보완.
-//   가격은 Binance/Hyperliquid 우선, MEXC는 둘 다 끊겼을 때만 적용(아래 ticker 핸들러 가드).
+// 크립토 MEXC 폴백: 바이낸스 선물이 막히고 Hyperliquid에도 값이 없을 때 가격을 보완한다.
+// 24시간 등락률은 전체 티커의 riseFallRate를 사용하며, Binance/Hyperliquid 가격을 우선한다.
 function subscribeMexcCryptoFallback(){
   if(!wsMexc || wsMexc.readyState !== WebSocket.OPEN) return;
   for(const s of BINANCE_SYMBOLS.crypto){
@@ -2067,8 +2678,10 @@ function subscribeMexcFinal(){
     .filter(x => x.ex === "MEXC" && (x.type==="Stock" || x.type==="Index" || x.type==="Energy" || x.type==="Commodity"))
     .sort((a,b)=> (b.kospi?1:0) - (a.kospi?1:0)); // 메모리 보드 종목을 큐 맨 앞으로
 
-  // 종목별 후보 심볼 목록(이미 구독한 건 제외 → 워밍업 보충 패스가 헛돌지 않음)
-  const perInstrument = mexcRows.map(it => {
+  // 계약 스트림에서 실제 존재가 확인된 심볼만 종목당 하나 매핑한다.
+  // 전체 티커(sub.tickers)를 이미 받고 있으므로 종목별 추측 구독은 하지 않는다.
+  const resolved = mexcRows.map(it => {
+    const explicitSymbols = new Set(it.mexcSymbols || []);
     let syms;
     if(it.mexcSymbols && it.mexcSymbols.length){
       syms = [...it.mexcSymbols];
@@ -2084,34 +2697,25 @@ function subscribeMexcFinal(){
         syms.push(b + "_USDT");
         syms.push(b + "USDT");   // 무언더스코어 형식(예: TSLAUSDT) 대응
       }
-      // 발견된 계약 집합에 실제 존재하는 후보를 앞쪽으로
-      if(mexcContracts.size) syms.sort((a,b)=> (mexcContracts.has(b)?1:0) - (mexcContracts.has(a)?1:0));
-      syms = Array.from(new Set(syms)).slice(0, 10);
+      syms = Array.from(new Set(syms));
     }
-    syms = syms.filter(s => !mexcSymbolToId.has(s));
-    return { id: it.id, syms };
-  });
-
-  // 라운드 인터리브: 모든 종목의 1순위 심볼 → 2순위 … 순으로 전송
-  // (종목마다 가장 유력한 심볼이 먼저 떠서 보드/표가 골고루 빨리 채워져요)
-  const queue = [];
-  const maxLen = perInstrument.reduce((m,p)=> Math.max(m, p.syms.length), 0);
-  for(let r=0; r<maxLen; r++){
-    for(const p of perInstrument){
-      if(r < p.syms.length) queue.push([p.syms[r], p.id]);
+    if(it.type === "Stock"){
+      syms = Array.from(new Set(syms)).sort((a,b)=>{
+        const score = s => s.endsWith("STOCK_USDT") ? 3 : (mexcTickerToSym.get(it.base) === s ? 2 : 1);
+        return score(b) - score(a);
+      });
     }
-  }
+    const verified = Array.from(new Set(syms)).filter(s =>
+      mexcContracts.has(s) &&
+      (it.type !== "Stock" || explicitSymbols.has(s) || mexcStockSymbols.has(s))
+    );
+    return { id:it.id, symbol:verified[0] || null };
+  }).filter(x => x.symbol && !mexcSymbolToId.has(x.symbol));
 
-  // 송신 타이머는 항상 1개만 — 워밍업 보충 패스가 겹쳐도 레이트가 2배로 튀지 않게.
-  // 18ms(초당 ~55건)는 MEXC 메시지 레이트 한도를 넘겨 끊김을 유발 → 30ms(초당 ~33건)로 완화.
-  if(mexcSubTimer){ clearInterval(mexcSubTimer); mexcSubTimer=null; }
-  let i = 0;
-  mexcSubTimer = setInterval(()=> {
-    if(!wsMexc || wsMexc.readyState !== WebSocket.OPEN){ clearInterval(mexcSubTimer); mexcSubTimer=null; return; }
-    if(i >= queue.length){ clearInterval(mexcSubTimer); mexcSubTimer=null; return; }
-    const [sym, id] = queue[i++];
-    mexcSubscribe(sym, id);
-  }, 30);
+  for(const {id, symbol} of resolved) mexcSubscribe(symbol, id, false);
+
+  // 매핑이 끝난 뒤 충분한 틱 수신 유예를 주고, 이번 연결에서 실제 수신되지 않은 행만 숨김
+  scheduleInitialPrune();
 }
 
 /* ===== FX derived ===== */
@@ -2119,16 +2723,16 @@ function fxGet(sym){ return fxState.get(sym); }
 function fxCompute(expr){
   if(expr.op === "DIRECT"){
     const A = fxGet(expr.a); if(!A) return null;
-    return { last: A.last, ratio: (1 + A.rfr) };
+    return { last: A.last, ratio: (1 + A.rfr), ts:A.ts };
   }
   if(expr.op === "INVERT"){
     const A = fxGet(expr.a); if(!A) return null;
-    return { last: 1 / A.last, ratio: 1 / (1 + A.rfr) };
+    return { last: 1 / A.last, ratio: 1 / (1 + A.rfr), ts:A.ts };
   }
   if(expr.op === "DIV"){
     const A = fxGet(expr.a), B = fxGet(expr.b);
     if(!A || !B) return null;
-    return { last: A.last / B.last, ratio: (1 + A.rfr) / (1 + B.rfr) };
+    return { last: A.last / B.last, ratio: (1 + A.rfr) / (1 + B.rfr), ts:Math.min(A.ts, B.ts) };
   }
   return null;
 }
@@ -2137,7 +2741,7 @@ function recomputeFx(){
     const out = fxCompute(fx.expr);
     if(!out) continue;
     const pct = (out.ratio - 1) * 100;
-    applyUpdate("MFX:"+fx.base, out.last, pct, NaN, NaN);
+    applyUpdate("MFX:"+fx.base, out.last, pct, NaN, NaN, "MEXC", true, undefined, out.ts);
   }
 }
 
@@ -2200,31 +2804,78 @@ function startCoinGecko(){
 
 /* ===== TradingView View ===== */
 let tvLoaded = false;
+let tvLoadPromise = null;
+let tvRenderSeq = 0;
 let tvWidget = null;
 let currentTvInstrument = null;
+let lastTvTrigger = null;
+const TV_INTERVALS = new Set(["5","15","60","240","D"]);
+let tvInterval = "60";
+try{
+  const saved = localStorage.getItem("nas:tvInterval");
+  if(TV_INTERVALS.has(saved)) tvInterval = saved;
+}catch(_){}
+const tvExternal = document.getElementById("tvExternal");
+function syncTvIntervalButtons(){
+  document.querySelectorAll(".tvInterval").forEach(btn=>{
+    const on = btn.dataset.interval === tvInterval;
+    btn.classList.toggle("on", on);
+    btn.setAttribute("aria-pressed", String(on));
+  });
+}
+document.querySelectorAll(".tvInterval").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    const next = btn.dataset.interval;
+    if(!TV_INTERVALS.has(next) || next === tvInterval) return;
+    tvInterval = next;
+    try{ localStorage.setItem("nas:tvInterval", tvInterval); }catch(_){}
+    syncTvIntervalButtons();
+    if(currentTvInstrument) openTradingView(currentTvInstrument);
+  });
+});
+syncTvIntervalButtons();
 
 function loadTvScript(){
-  return new Promise((resolve, reject) => {
-    if(tvLoaded && window.TradingView) return resolve();
+  if(tvLoaded && window.TradingView) return Promise.resolve();
+  if(tvLoadPromise) return tvLoadPromise;
+  tvLoadPromise = new Promise((resolve, reject) => {
     const s = document.createElement("script");
     s.src = "https://s3.tradingview.com/tv.js";
     s.onload = () => { tvLoaded = true; resolve(); };
     s.onerror = reject;
     document.head.appendChild(s);
+  }).catch(err=>{
+    tvLoadPromise = null;
+    throw err;
   });
+  return tvLoadPromise;
+}
+function syncTvSubtitle(it, quote=lastValue.get(it.id)){
+  if(!it) return;
+  const quality = quoteQuality(quote);
+  const freshness = quality === "live" ? "실시간" : quality === "stale" ? ageText(quote.ts) + " 지연" : "수신 대기";
+  tvSubtitle.textContent = `현재가 ${quoteSourceLabel(quote)} · ${freshness} · 차트 ${tvSymbolFor(it)}`;
 }
 
-async function openTradingView(it){
+async function openTradingView(it, trigger){
   const symbol = tvSymbolFor(it);
+  const renderSeq = ++tvRenderSeq;
   const wasListView = (tvView.style.display !== "block");
   currentTvInstrument = it;
+  if(wasListView) lastTvTrigger = trigger || document.activeElement;
 
   listView.style.display = "none";
   tvView.style.display = "block";
   document.documentElement.classList.add("tv-open");
   document.body.classList.add("tv-open");   // 차트 화면: 루트/페이지/iframe 스크롤 잠금(모바일 주소창 안정)
   tvTitle.textContent = `${it.krLabel || it.display}`;
-  tvSubtitle.textContent = `${it.ex} · ${symbol}`;
+  syncTvSubtitle(it);
+  if(tvExternal) tvExternal.href = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}`;
+  syncTvIntervalButtons();
+  if(wasListView){
+    const backBtn = document.getElementById("backBtn");
+    if(backBtn) requestAnimationFrame(()=>backBtn.focus());
+  }
 
   // 휴대폰/브라우저 뒤로가기로 목록에 복귀하도록 히스토리 항목 추가(사이트 이탈 방지).
   // 이미 차트 화면이면(테마 전환 재렌더 등) 중복 push 안 함.
@@ -2232,10 +2883,16 @@ async function openTradingView(it){
     try{ history.pushState({ tv:true }, ""); }catch(_){}
   }
 
+  if(tvWidget && typeof tvWidget.remove === "function"){
+    try{ tvWidget.remove(); }catch(_){}
+  }
+  tvWidget = null;
   tvChart.innerHTML = "";
+  tvChart.setAttribute("aria-busy", "true");
 
   try{
     await loadTvScript();
+    if(renderSeq !== tvRenderSeq || currentTvInstrument?.id !== it.id || tvView.style.display !== "block") return;
     const containerId = "tv_chart_container";
     const c = document.createElement("div");
     c.id = containerId;
@@ -2248,31 +2905,45 @@ async function openTradingView(it){
     tvWidget = new TradingView.widget({
       autosize: true,
       symbol: symbol,
-      interval: "D",
+      interval: tvInterval,
       timezone: "Asia/Seoul",
       theme: currentTheme() === "light" ? "light" : "dark",
       style: "1",
       locale: "kr",
-      allow_symbol_change: true,
+      allow_symbol_change: false,
       hide_top_toolbar: false,
       hide_legend: false,
       withdateranges: true,
       details: true,
       container_id: containerId
     });
+    tvChart.setAttribute("aria-busy", "false");
   }catch(e){
+    if(renderSeq !== tvRenderSeq || tvView.style.display !== "block") return;
+    tvChart.setAttribute("aria-busy", "false");
     tvChart.innerHTML = `<div style="padding:16px;color:var(--muted);">
       TradingView 로드에 실패했어요. 아래 링크로 열어보세요:<br/>
-      <a href="https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}" target="_blank" style="color:var(--brand)">TradingView에서 열기</a>
+      <a href="https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}" target="_blank" rel="noopener" style="color:var(--brand)">TradingView에서 열기</a>
+      <button class="btn" type="button" id="tvRetryBtn" style="margin-left:8px">다시 시도</button>
     </div>`;
+    const retry = document.getElementById("tvRetryBtn");
+    if(retry) retry.onclick = ()=>openTradingView(it);
   }
 }
 
 function goBack(){
+  tvRenderSeq++;
+  if(tvWidget && typeof tvWidget.remove === "function"){
+    try{ tvWidget.remove(); }catch(_){}
+  }
+  tvWidget = null;
   tvView.style.display = "none";
   listView.style.display = "block";
   document.documentElement.classList.remove("tv-open");
   document.body.classList.remove("tv-open");
+  if(lastTvTrigger && typeof lastTvTrigger.focus === "function"){
+    requestAnimationFrame(()=>lastTvTrigger.focus());
+  }
 }
 // 인앱 '뒤로'/ESC는 history.back()을 호출 → popstate에서 goBack 실행(휴대폰 뒤로가기와 동일 동작)
 document.getElementById("backBtn").onclick = ()=>{
@@ -2557,26 +3228,33 @@ function refreshKrxAnchors(){
       krxRefOpenById.set(id, open);
       krxAnchorMsById.set(id, anchorMs);
       const cur = lastValue.get(id);
-      if(cur && isFinite(cur.last)) applyUpdate(id, cur.last, NaN, cur.vol, NaN, cur.src);
+      if(cur && isFinite(cur.last)) recomputeStoredQuote(id, NaN);
     }).catch(()=>{ /* CORS/네트워크 실패 → 일봉 시가(09:00) 기준으로 자동 폴백 */ });
   }
 }
 
 /* ===== Reconnect + Start ===== */
 function closeAll(){
-  try{ wsBinance && wsBinance.close(); }catch(_){}
-  try{ wsMexc && wsMexc.close(); }catch(_){}
-  try{ wsHyper && wsHyper.close(); }catch(_){}
+  const oldBinance = wsBinance, oldMexc = wsMexc, oldHyper = wsHyper;
   wsBinance = wsMexc = wsHyper = null;
+  try{ oldBinance && oldBinance.close(); }catch(_){}
+  try{ oldMexc && oldMexc.close(); }catch(_){}
+  try{ oldHyper && oldHyper.close(); }catch(_){}
   if(mexcPing){ clearInterval(mexcPing); mexcPing=null; }
-  if(mexcSubTimer){ clearInterval(mexcSubTimer); mexcSubTimer=null; }
   if(hyperPing){ clearInterval(hyperPing); hyperPing=null; }
   if(frankfurterTimer){ clearInterval(frankfurterTimer); frankfurterTimer=null; }
+  if(binanceTimer){ clearTimeout(binanceTimer); binanceTimer=null; }
+  if(mexcTimer){ clearTimeout(mexcTimer); mexcTimer=null; }
   if(hyperTimer){ clearTimeout(hyperTimer); hyperTimer=null; }
+  if(deadPruneTimer){ clearTimeout(deadPruneTimer); deadPruneTimer=null; }
+  clearMexcDiscoveryTimers();
+  if(mexcMetaController){ try{ mexcMetaController.abort(); }catch(_){} mexcMetaController=null; }
+  mexcWarmupActive = false;
   if(coingeckoTimer){ clearInterval(coingeckoTimer); coingeckoTimer=null; }
-  setDot(dotBinance,"DEAD");
-  setDot(dotMexc,"DEAD");
-  setDot(dotHyper,"DEAD");
+  binanceBackoff = hyperBackoff = mexcBackoff = 800;
+  markFeedClosed("BINANCE");
+  markFeedClosed("MEXC");
+  markFeedClosed("HYPER");
   if(dotCoin) setDot(dotCoin,"DEAD");
 }
 document.getElementById("reconnectBtn").onclick = ()=> {
@@ -2587,15 +3265,31 @@ document.getElementById("reconnectBtn").onclick = ()=> {
   krxRefOpenById.clear();
   krxAnchorMsById.clear();
   krxFetchAtById.clear();
+  pruneComplete = false;
+  showMissing = false;
+  for(const {row, priceEl, volEl, chgEl, sourceEl} of rows.values()){
+    row.dataset.dead = "0";
+    row.dataset.quality = "missing";
+    priceEl.textContent = "-";
+    volEl.textContent = "-";
+    chgEl.textContent = "-";
+    chgEl.classList.remove("up","down");
+    sourceEl.textContent = "시세 재연결 중";
+    sourceEl.className = "quoteMeta";
+  }
+  updateAllKospiCards();
+  setFilter(currentFilterMode);
   connectBinance();
   connectHyperliquid();
   connectMexc();
   startFrankfurterFx();
   startCoinGecko();
+  scheduleInitialPrune();
 };
 
 window.addEventListener("visibilitychange", ()=> {
   if(!document.hidden){
+    refreshFeedHealth();
     if(!wsBinance || wsBinance.readyState !== WebSocket.OPEN) connectBinance();
     if(!wsHyper || wsHyper.readyState !== WebSocket.OPEN) connectHyperliquid();
     if(!wsMexc || wsMexc.readyState !== WebSocket.OPEN) connectMexc();
@@ -2609,6 +3303,7 @@ connectHyperliquid();
 connectMexc();
 startFrankfurterFx();
 startCoinGecko();
+scheduleInitialPrune();
 updateAllKospiCards();
 setFilter("ALL"); // 처음 로드 = '전체' 탭: 메모리 보드 + 전체 목록 노출
 // 코스피(한국주) 등락률을 전일 KRX 마감(15:30) 기준으로 보정 — 심볼 해석 후/일자 롤오버 대응
