@@ -516,7 +516,7 @@
         <b>메모리</b>(삼성전자·SK하이닉스·마이크론)와 <b>스토리지</b>(샌디스크·WD·씨게이트) 6사를 한 화면에서 비교해요.
         삼성·SK하이닉스는 MEXC 무기한 선물, 나머지는 미국 상장가를 USD/KRW로 환산한 <b>추정가</b>이고 시총도 원화로 표기해요.
         공식 시세가 아니며 실제가와 차이가 있을 수 있어요(비공식 정보 · 투자권유 아님).
-        등락률은 24시간 거래되는 토큰화 선물 기준이라 국장 본장(09:00~15:30) 등락률과 차이가 있을 수 있어요 — 한국 종목은 전일 15:30 마감가에 맞추려 시도하되, 데이터 제약 시 일봉(09:00) 시가 기준으로 표시돼요.
+        삼성전자·SK하이닉스의 등락률과 등락액은 매일 오전 9시(KST)의 MEXC 선물 시가 대비예요. 24시간 거래되는 토큰화 선물이므로 KRX 본장 등락률과 차이가 있을 수 있어요.
       </div>
     </section>
 
@@ -733,7 +733,7 @@ function quoteSourceLabel(v){
 }
 function quoteBasisLabel(v){
   if(!v || !isFinite(v.pct)) return "등락 기준 대기";
-  if(v.pctBasis === "KRX_CLOSE") return "KRX 전일 마감 대비";
+  if(v.pctBasis === "KST_09_OPEN") return "오전 9시 시가 대비";
   if(v.pctBasis === "24H") return "24시간 등락";
   return "일봉 시가 대비";
 }
@@ -1136,11 +1136,10 @@ const ASSET_NAMES = {
 const rows = new Map();
 const lastValue = new Map();
 const dailyOpenById = new Map();
-// 한국주(코스피): 전일 KRX 마감(15:30 KST=06:30 UTC) 시점의 선물가 = 본장 등락률 기준가
-// MEXC contract kline(REST)으로 받아오며, 실패(CORS/네트워크) 시 dailyOpen(09:00 시가)으로 자동 폴백.
-const krxRefOpenById = new Map();  // id -> 전일 15:30 기준가
-const krxAnchorMsById = new Map(); // id -> 위 값의 기준일(anchorMs)
-const krxFetchAtById = new Map();  // id -> 마지막 fetch 시도(ms), 실패 재시도 throttle
+// 메모리 보드의 한국주(삼성전자·SK하이닉스): 매일 09:00 KST 시가를 별도 기준가로 사용.
+// MEXC contract Min1 kline(REST)의 realOpen을 읽고, UTC 자정(=KST 09:00)마다 갱신.
+const kstOpenRefById = new Map();     // id -> { open, anchorMs, symbol }
+const kstOpenFetchAtById = new Map();  // id -> 마지막 fetch 시도(ms), 실패 재시도 throttle
 const pendingRender = new Set();
 let rafScheduled = false;
 const FAVORITES_KEY = "nas:favorites:v1";
@@ -1319,7 +1318,7 @@ function makeKospiCard(it, mode){
   const price = document.createElement("div"); price.className="kPrice";
   price.innerHTML = isStock ? `<span class="won">${it.usdMain ? "$" : "₩"}</span>-` : "-";
   const usd = document.createElement("div"); usd.className="kUsd"; usd.textContent = isStock ? (it.usdMain ? "₩ -" : "$ -") : "";
-  const delta = document.createElement("div"); delta.className="kDelta"; delta.textContent = "전일 대비 –";
+  const delta = document.createElement("div"); delta.className="kDelta"; delta.textContent = it.korStock ? "오전 시가 대비 –" : "전일 대비 –";
 
   let cap = null;
   if(isStock && isFinite(it.shares)){
@@ -1422,7 +1421,7 @@ function updateKospiCard(id){
   if(!v || !isFinite(v.last)){
     c.priceEl.innerHTML = `<span class="won">${c.def.usdMain ? "$" : "₩"}</span>-`;
     c.usdEl.textContent = c.def.usdMain ? "₩ -" : "$ -";
-    c.deltaEl.textContent = "전일 대비 –";
+    c.deltaEl.textContent = c.def.korStock ? "오전 시가 대비 –" : "전일 대비 –";
     c.deltaEl.className = "kDelta";
     if(c.capEl) c.capEl.innerHTML = `시총 <b>-</b>`;
     if(c.premEl) c.premEl.innerHTML = `본주 대비 프리미엄 <b>-</b>`;
@@ -1471,7 +1470,8 @@ function updateKospiCard(id){
   if(isFinite(v.pct)){
     const up = v.pct >= 0;
     let amt = "";
-    const dayOpen = dailyOpenById.get(id);
+    const kstRef = kstOpenRefById.get(id);
+    const dayOpen = kstRef ? kstRef.open : dailyOpenById.get(id);
     if(c.def.usdMain && isFinite(dayOpen) && dayOpen > 0){
       const amtUsd = usd - dayOpen;
       amt = " · " + (amtUsd >= 0 ? "+" : "−") + "$" + fmtPrice(Math.abs(amtUsd));
@@ -1479,10 +1479,11 @@ function updateKospiCard(id){
       const amtKrw = (usd - dayOpen) * fx * scale;
       amt = " · " + (amtKrw >= 0 ? "+" : "−") + fmtKRW(Math.abs(amtKrw)) + "원";
     }
-    c.deltaEl.textContent = (up?"▲ ":"▼ ") + Math.abs(v.pct).toFixed(2) + "%" + amt;
+    const basis = c.def.korStock && v.pctBasis === "KST_09_OPEN" ? " · 09시 기준" : "";
+    c.deltaEl.textContent = (up?"▲ ":"▼ ") + Math.abs(v.pct).toFixed(2) + "%" + amt + basis;
     c.deltaEl.className = "kDelta " + (up?"up":"down");
   }else{
-    c.deltaEl.textContent = "전일 대비 –";
+    c.deltaEl.textContent = c.def.korStock ? "오전 시가 대비 –" : "전일 대비 –";
     c.deltaEl.className = "kDelta";
   }
 
@@ -2114,8 +2115,9 @@ function resolvePct(id, last, fallbackPct, dayOpen){
   // dayOpen이 유효하면 저장
   if(isFinite(dayOpen) && dayOpen > 0) dailyOpenById.set(id, dayOpen);
 
-  // 한국주는 전일 KRX 마감(15:30 KST) 기준가가 있으면 우선 사용 → 본장 등락률과 일치
-  const refOpen = krxRefOpenById.has(id) ? krxRefOpenById.get(id) : dailyOpenById.get(id);
+  // 삼성전자·SK하이닉스는 검증된 가장 최근 09:00 KST 시가를 우선 사용
+  const kstRef = kstOpenRefById.get(id);
+  const refOpen = kstRef ? kstRef.open : dailyOpenById.get(id);
   // ✅ 기준가가 있으면 그 기준으로 계산
   if(isFinite(refOpen) && refOpen > 0 && isFinite(last)){
     return ((last / refOpen) - 1) * 100;
@@ -2131,8 +2133,10 @@ function applyUpdate(id, last, pct, vol, dayOpen, src, usePctDirect, volUnit, so
   const prev = lastValue.get(id);
   const receivedAt = Date.now();
   const priceTs = normalizeSourceTimestamp(sourceTs, receivedAt);
+  const kstRef = kstOpenRefById.get(id);
+  const hasKstOpen = !!(kstRef && isFinite(kstRef.open) && kstRef.open > 0);
   const hasDailyOpen = isFinite(dailyOpenById.get(id)) && dailyOpenById.get(id) > 0;
-  const pctBasis = krxRefOpenById.has(id) ? "KRX_CLOSE"
+  const pctBasis = hasKstOpen && isFinite(resolvedPct) ? "KST_09_OPEN"
     : (hasDailyOpen && isFinite(resolvedPct) ? "DAY_OPEN"
       : (usePctDirect && isFinite(pct) ? "24H" : (prev ? prev.pctBasis : "")));
   lastValue.set(id, {
@@ -2163,7 +2167,7 @@ function recomputeStoredQuote(id, dayOpen){
   lastValue.set(id, {
     ...cur,
     pct,
-    pctBasis: krxRefOpenById.has(id) ? "KRX_CLOSE" : (isFinite(pct) ? "DAY_OPEN" : cur.pctBasis)
+    pctBasis: kstOpenRefById.has(id) ? "KST_09_OPEN" : (isFinite(pct) ? "DAY_OPEN" : "")
   });
   pendingRender.add(id);
   scheduleRender();
@@ -2492,6 +2496,7 @@ function handleMexcTicker(data){
 
   const id = mexcSymbolToId.get(sym);
   if(!id || id === "__FX_BASE__") return;
+  const isMemoryKorStock = !!(kospiCardEls.get(id) && kospiCardEls.get(id).def && kospiCardEls.get(id).def.korStock);
   const cur = lastValue.get(id);
   if(cur && cur.src === "MEXC" && isFinite(cur.ts) && sourceTs + 1000 < cur.ts) return;
   if(cur && isFinite(cur.last) && cur.last > 0 && id.startsWith("M:")){
@@ -2499,16 +2504,19 @@ function handleMexcTicker(data){
     if(ratio > 4 || ratio < 0.25) return;
   }
   mexcSeenIds.add(id);
-  if(id.startsWith("M:")) mexcLiveSymById.set(id, sym);
+  if(id.startsWith("M:")){
+    mexcLiveSymById.set(id, sym);
+    if(isMemoryKorStock) refreshKstOpenAnchors(); // 첫 틱·09시 롤오버 즉시 기준가 확인
+  }
 
   const cryptoYield = id.startsWith("B:") && cur &&
     (cur.src==="BINANCE" || cur.src==="HYPER") && (Date.now()-cur.ts)<6000;
   if(cryptoYield && cur.src === "HYPER"){
     mergeMarketStats(id, vol, volUnit, "MEXC", sourceTs);
   }else if(!cryptoYield){
-    // 공식 전체 티커의 24시간 등락률을 사용해 종목별 Day1 구독 폭주를 피한다.
-    // 한국주는 KRX 기준가가 있으면 resolvePct가 계속 그 값을 우선한다.
-    applyUpdate(id, last, pct24h, vol, NaN, "MEXC", true, volUnit, sourceTs);
+    // 공식 전체 티커의 24시간 등락률을 사용하되,
+    // 삼성전자·SK하이닉스는 09:00 기준가가 오기 전 24시간 등락률을 섞지 않는다.
+    applyUpdate(id, last, pct24h, vol, NaN, "MEXC", !isMemoryKorStock, volUnit, sourceTs);
   }
 }
 
@@ -3177,59 +3185,63 @@ document.addEventListener("click", (e)=>{
 (window.requestIdleCallback || window.setTimeout)(()=> loadHtml2Canvas().catch(()=>{}));
 window.addEventListener("pointerdown", ()=> loadHtml2Canvas().catch(()=>{}), { once:true, passive:true });
 
-/* ===== 코스피(한국주) 등락률: 전일 KRX 마감(15:30 KST) 기준 =====
-   토큰화 선물은 24시간 거래돼 일봉 시가(09:00 KST)만으로는 본장 등락률과 어긋나요.
-   전일 15:30 KST(=06:30 UTC) 시점의 선물가를 MEXC contract kline(REST)으로 받아 기준가로 사용.
-   요청이 CORS/네트워크로 막히면 기준가를 못 채워 자동으로 일봉 시가(09:00) 기준으로 폴백돼요. */
-function prevKrxCloseMs(nowMs){
-  const d = new Date(nowMs);
-  // 15:30 KST = 06:30 UTC (날짜 경계 안 넘음: 그 UTC 시각의 요일 == KST 요일)
-  let anchor = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 6, 30, 0);
-  if(nowMs < anchor) anchor -= 86400000;        // 아직 오늘 마감(15:30) 전 → 전일 마감 기준
-  const wd = new Date(anchor).getUTCDay();        // 0=일 … 6=토
-  if(wd === 6) anchor -= 86400000;                // 토 → 금
-  else if(wd === 0) anchor -= 2 * 86400000;       // 일 → 금
-  return anchor;                                   // (공휴일은 보정 안 함 — 근접 기준가로 충분)
+/* ===== 메모리 보드 한국주 등락률: 가장 최근 09:00 KST 시가 기준 =====
+   09:00 KST는 UTC 자정이므로 매 UTC 날짜 경계마다 기준가가 바뀐다.
+   MEXC contract Min1 kline의 realOpen을 우선 사용하고, 정확한 캔들이 없으면 5분 안의 첫 시가를 쓴다. */
+function latestKstOpenMs(nowMs){
+  return Math.floor(nowMs / 86400000) * 86400000;
 }
-async function fetchKrxRefOpen(symbol, anchorMs){
+async function fetchKstOpen(symbol, anchorMs){
   const anchorSec = Math.floor(anchorMs / 1000);
   const url = "https://contract.mexc.com/api/v1/contract/kline/" + symbol +
-              "?interval=Min30&start=" + (anchorSec - 7200) + "&end=" + (anchorSec + 1800);
+              "?interval=Min1&start=" + anchorSec + "&end=" + (anchorSec + 300);
   const res = await fetch(url, { cache:"no-store" });
   if(!res.ok) throw new Error("http " + res.status);
   const j = await res.json();
   const data = j && j.data;
   if(!data || !Array.isArray(data.time) || !data.time.length) throw new Error("no data");
-  // 06:30 UTC(=15:30 KST) 시점에 가장 근접한 캔들의 시가 = 전일 본장 마감 기준가
   let bestIdx = -1, bestDiff = Infinity;
   for(let i = 0; i < data.time.length; i++){
-    const diff = Math.abs(data.time[i] - anchorSec);
-    if(diff < bestDiff){ bestDiff = diff; bestIdx = i; }
+    const diff = Number(data.time[i]) - anchorSec;
+    if(diff >= 0 && diff < bestDiff){ bestDiff = diff; bestIdx = i; }
   }
-  if(bestIdx < 0) throw new Error("no candle");
-  // 실거래가(realOpen) 우선 — 티커 lastPrice와 같은 기준이라야 등락률이 정확
+  if(bestIdx < 0 || bestDiff > 300) throw new Error("no 09:00 candle");
   const openArr = (Array.isArray(data.realOpen) && data.realOpen.length === data.time.length)
     ? data.realOpen : data.open;
   const open = parseFloat(openArr[bestIdx]);
   if(!isFinite(open) || open <= 0) throw new Error("bad open");
   return open;
 }
-function refreshKrxAnchors(){
+function refreshKstOpenAnchors(){
   const now = Date.now();
-  const anchorMs = prevKrxCloseMs(now);
+  const anchorMs = latestKstOpenMs(now);
   for(const [id, c] of kospiCardEls){
-    if(!c.def || !c.def.korStock) continue;                                    // 한국주(삼성·SK하이닉스)만
-    if(krxRefOpenById.has(id) && krxAnchorMsById.get(id) === anchorMs) continue; // 이미 확보(같은 기준일)
+    if(!c.def || !c.def.korStock) continue; // 삼성전자·SK하이닉스만
     const sym = mexcLiveSymById.get(id);
-    if(!sym) continue;                                                          // 살아있는 계약심볼 아직 모름
-    if(now - (krxFetchAtById.get(id) || 0) < 90000) continue;                   // 실패 재시도 throttle(90s)
-    krxFetchAtById.set(id, now);
-    fetchKrxRefOpen(sym, anchorMs).then(open => {
-      krxRefOpenById.set(id, open);
-      krxAnchorMsById.set(id, anchorMs);
+    const ref = kstOpenRefById.get(id);
+    const refIsCurrent = !!(ref && ref.anchorMs === anchorMs && (!sym || ref.symbol === sym));
+    if(refIsCurrent) continue;
+
+    if(ref){
+      kstOpenRefById.delete(id);
+      kstOpenFetchAtById.delete(id);
       const cur = lastValue.get(id);
       if(cur && isFinite(cur.last)) recomputeStoredQuote(id, NaN);
-    }).catch(()=>{ /* CORS/네트워크 실패 → 일봉 시가(09:00) 기준으로 자동 폴백 */ });
+    }
+
+    if(!sym) continue;
+    if(now - (kstOpenFetchAtById.get(id) || 0) < 90000) continue;
+    kstOpenFetchAtById.set(id, now);
+    fetchKstOpen(sym, anchorMs).then(open => {
+      if(mexcLiveSymById.get(id) !== sym || latestKstOpenMs(Date.now()) !== anchorMs) return;
+      const cur = lastValue.get(id);
+      if(cur && isFinite(cur.last) && cur.last > 0){
+        const ratio = open / cur.last;
+        if(ratio > 4 || ratio < 0.25) return;
+      }
+      kstOpenRefById.set(id, { open, anchorMs, symbol:sym });
+      if(cur && isFinite(cur.last)) recomputeStoredQuote(id, NaN);
+    }).catch(()=>{ /* 기준가 확인 전에는 24시간 등락률 대신 대기 상태 유지 */ });
   }
 }
 
@@ -3262,9 +3274,8 @@ document.getElementById("reconnectBtn").onclick = ()=> {
   lastValue.clear();
   pendingRender.clear();
   dailyOpenById.clear();
-  krxRefOpenById.clear();
-  krxAnchorMsById.clear();
-  krxFetchAtById.clear();
+  kstOpenRefById.clear();
+  kstOpenFetchAtById.clear();
   pruneComplete = false;
   showMissing = false;
   for(const {row, priceEl, volEl, chgEl, sourceEl} of rows.values()){
@@ -3306,10 +3317,10 @@ startCoinGecko();
 scheduleInitialPrune();
 updateAllKospiCards();
 setFilter("ALL"); // 처음 로드 = '전체' 탭: 메모리 보드 + 전체 목록 노출
-// 코스피(한국주) 등락률을 전일 KRX 마감(15:30) 기준으로 보정 — 심볼 해석 후/일자 롤오버 대응
-setTimeout(refreshKrxAnchors, 7000);
-setTimeout(refreshKrxAnchors, 18000);
-setInterval(refreshKrxAnchors, 60000);
+// 삼성전자·SK하이닉스 등락률을 가장 최근 09:00 KST 시가 기준으로 보정
+setTimeout(refreshKstOpenAnchors, 7000);
+setTimeout(refreshKstOpenAnchors, 18000);
+setInterval(refreshKstOpenAnchors, 60000);
 </script>
 </body>
 </html>
