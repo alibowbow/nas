@@ -516,7 +516,7 @@
         <b>메모리</b>(삼성전자·SK하이닉스·마이크론)와 <b>스토리지</b>(샌디스크·WD·씨게이트) 6사를 한 화면에서 비교해요.
         삼성·SK하이닉스는 MEXC 무기한 선물, 나머지는 미국 상장가를 USD/KRW로 환산한 <b>추정가</b>이고 시총도 원화로 표기해요.
         공식 시세가 아니며 실제가와 차이가 있을 수 있어요(비공식 정보 · 투자권유 아님).
-        삼성전자·SK하이닉스의 등락률과 등락액은 매일 오전 9시(KST)의 MEXC 선물 시가 대비예요. 24시간 거래되는 토큰화 선물이므로 KRX 본장 등락률과 차이가 있을 수 있어요.
+        삼성전자·SK하이닉스의 등락률은 매일 오전 9시(KST)의 MEXC 선물 시가 대비예요. 24시간 거래되는 토큰화 선물이므로 KRX 본장 등락률과 차이가 있을 수 있어요.
       </div>
     </section>
 
@@ -1472,17 +1472,7 @@ function updateKospiCard(id){
   const displayPct = KST_OPEN_IDS.has(id) && !kstRef ? NaN : v.pct;
   if(isFinite(displayPct)){
     const up = displayPct >= 0;
-    let amt = "";
-    const dayOpen = kstRef ? kstRef.open : dailyOpenById.get(id);
-    if(c.def.usdMain && isFinite(dayOpen) && dayOpen > 0){
-      const amtUsd = usd - dayOpen;
-      amt = " · " + (amtUsd >= 0 ? "+" : "−") + "$" + fmtPrice(Math.abs(amtUsd));
-    }else if(isFinite(fx) && isFinite(dayOpen) && dayOpen > 0){
-      const amtKrw = (usd - dayOpen) * fx * scale;
-      amt = " · " + (amtKrw >= 0 ? "+" : "−") + fmtKRW(Math.abs(amtKrw)) + "원";
-    }
-    const basis = c.def.korStock && v.pctBasis === "KST_09_OPEN" ? " · 09시 기준" : "";
-    c.deltaEl.textContent = (up?"▲ ":"▼ ") + Math.abs(displayPct).toFixed(2) + "%" + amt + basis;
+    c.deltaEl.textContent = (up?"▲ ":"▼ ") + Math.abs(displayPct).toFixed(2) + "%";
     c.deltaEl.className = "kDelta " + (up?"up":"down");
   }else{
     c.deltaEl.textContent = c.def.korStock ? "오전 시가 대비 –" : "전일 대비 –";
