@@ -1137,9 +1137,10 @@ const rows = new Map();
 const lastValue = new Map();
 const dailyOpenById = new Map();
 // 메모리 보드의 한국주(삼성전자·SK하이닉스): 매일 09:00 KST 시가를 별도 기준가로 사용.
-// MEXC contract Min1 kline(REST)의 realOpen을 읽고, UTC 자정(=KST 09:00)마다 갱신.
-const kstOpenRefById = new Map();     // id -> { open, anchorMs, symbol }
-const kstOpenFetchAtById = new Map();  // id -> 마지막 fetch 시도(ms), 실패 재시도 throttle
+// MEXC Day1 WebSocket을 1차, Min1 REST를 2차 기준가로 쓰고 UTC 자정(=KST 09:00)마다 갱신.
+const KST_OPEN_IDS = new Set(["M:SAMSUNG","M:SKHYNIX"]);
+const kstOpenRefById = new Map();      // id -> { open, anchorMs, symbol, source }
+const kstOpenFetchAtById = new Map();  // id -> { at, symbol, anchorMs }, REST 재시도 throttle
 const pendingRender = new Set();
 let rafScheduled = false;
 const FAVORITES_KEY = "nas:favorites:v1";
@@ -1467,10 +1468,11 @@ function updateKospiCard(id){
     }
   }
 
-  if(isFinite(v.pct)){
-    const up = v.pct >= 0;
+  const kstRef = getCurrentKstRef(id);
+  const displayPct = KST_OPEN_IDS.has(id) && !kstRef ? NaN : v.pct;
+  if(isFinite(displayPct)){
+    const up = displayPct >= 0;
     let amt = "";
-    const kstRef = kstOpenRefById.get(id);
     const dayOpen = kstRef ? kstRef.open : dailyOpenById.get(id);
     if(c.def.usdMain && isFinite(dayOpen) && dayOpen > 0){
       const amtUsd = usd - dayOpen;
@@ -1480,7 +1482,7 @@ function updateKospiCard(id){
       amt = " · " + (amtKrw >= 0 ? "+" : "−") + fmtKRW(Math.abs(amtKrw)) + "원";
     }
     const basis = c.def.korStock && v.pctBasis === "KST_09_OPEN" ? " · 09시 기준" : "";
-    c.deltaEl.textContent = (up?"▲ ":"▼ ") + Math.abs(v.pct).toFixed(2) + "%" + amt + basis;
+    c.deltaEl.textContent = (up?"▲ ":"▼ ") + Math.abs(displayPct).toFixed(2) + "%" + amt + basis;
     c.deltaEl.className = "kDelta " + (up?"up":"down");
   }else{
     c.deltaEl.textContent = c.def.korStock ? "오전 시가 대비 –" : "전일 대비 –";
@@ -2098,18 +2100,35 @@ function scheduleRender(){
   });
 }
 
+function getCurrentKstRef(id){
+  const ref = kstOpenRefById.get(id);
+  if(!ref) return null;
+  const liveSymbol = mexcLiveSymById.get(id);
+  const valid = KST_OPEN_IDS.has(id) &&
+    isFinite(ref.open) && ref.open > 0 &&
+    ref.anchorMs === latestKstOpenMs(Date.now()) &&
+    !!liveSymbol && ref.symbol === liveSymbol;
+  if(!valid){
+    kstOpenRefById.delete(id);
+    return null;
+  }
+  return ref;
+}
 function resolvePct(id, last, fallbackPct, dayOpen){
-  // dayOpen이 유효하면 저장
+  // 일반 종목의 일봉 시가는 기존대로 저장한다.
   if(isFinite(dayOpen) && dayOpen > 0) dailyOpenById.set(id, dayOpen);
 
-  // 삼성전자·SK하이닉스는 검증된 가장 최근 09:00 KST 시가를 우선 사용
-  const kstRef = kstOpenRefById.get(id);
-  const refOpen = kstRef ? kstRef.open : dailyOpenById.get(id);
-  // ✅ 기준가가 있으면 그 기준으로 계산
+  // 삼성전자·SK하이닉스는 현재 날짜·현재 실제 심볼까지 검증된 09:00 KST 시가만 허용한다.
+  if(KST_OPEN_IDS.has(id)){
+    const kstRef = getCurrentKstRef(id);
+    if(kstRef && isFinite(last)) return ((last / kstRef.open) - 1) * 100;
+    return NaN;
+  }
+
+  const refOpen = dailyOpenById.get(id);
   if(isFinite(refOpen) && refOpen > 0 && isFinite(last)){
     return ((last / refOpen) - 1) * 100;
   }
-  // ✅ 일봉 시가가 없으면 fallback도 쓰지 않고 '-'로(=NaN)
   return NaN;
 }
 
@@ -2120,12 +2139,13 @@ function applyUpdate(id, last, pct, vol, dayOpen, src, usePctDirect, volUnit, so
   const prev = lastValue.get(id);
   const receivedAt = Date.now();
   const priceTs = normalizeSourceTimestamp(sourceTs, receivedAt);
-  const kstRef = kstOpenRefById.get(id);
-  const hasKstOpen = !!(kstRef && isFinite(kstRef.open) && kstRef.open > 0);
-  const hasDailyOpen = isFinite(dailyOpenById.get(id)) && dailyOpenById.get(id) > 0;
+  const kstRef = getCurrentKstRef(id);
+  const hasKstOpen = !!kstRef;
+  const hasDailyOpen = !KST_OPEN_IDS.has(id) && isFinite(dailyOpenById.get(id)) && dailyOpenById.get(id) > 0;
   const pctBasis = hasKstOpen && isFinite(resolvedPct) ? "KST_09_OPEN"
-    : (hasDailyOpen && isFinite(resolvedPct) ? "DAY_OPEN"
-      : (usePctDirect && isFinite(pct) ? "24H" : (prev ? prev.pctBasis : "")));
+    : (KST_OPEN_IDS.has(id) ? ""
+      : (hasDailyOpen && isFinite(resolvedPct) ? "DAY_OPEN"
+        : (usePctDirect && isFinite(pct) ? "24H" : (prev ? prev.pctBasis : ""))));
   lastValue.set(id, {
     last,
     pct: resolvedPct,
@@ -2154,7 +2174,7 @@ function recomputeStoredQuote(id, dayOpen){
   lastValue.set(id, {
     ...cur,
     pct,
-    pctBasis: kstOpenRefById.has(id) ? "KST_09_OPEN" : (isFinite(pct) ? "DAY_OPEN" : "")
+    pctBasis: getCurrentKstRef(id) && isFinite(pct) ? "KST_09_OPEN" : (isFinite(pct) ? "DAY_OPEN" : "")
   });
   pendingRender.add(id);
   scheduleRender();
@@ -2347,7 +2367,9 @@ function queueHyperReconnect(){
 
 /* ===== MEXC WS ===== */
 let wsMexc=null, mexcTimer=null, mexcBackoff=800, mexcPing=null, mexcResolveTimer=null, mexcMetaController=null;
+let mexcGeneration=0;
 let frankfurterTimer=null;
+const MEXC_REST_BASE = "https://api.mexc.com";
 const mexcSymbolToId = new Map(); // subscribedSymbol -> instrumentId (ticker)
 const fxState = new Map();
 const mexcStockMap = new Map();   // base -> STOCK_USDT
@@ -2356,6 +2378,8 @@ const mexcStockSymbols = new Set();// STOCK 접미사 또는 계약 메타데이
 const mexcRejectedSymbols = new Set(); // 중단·인도·숨김·비무기한으로 확인된 계약
 const mexcTickerToSym = new Map(); // 표시 티커 -> 실제 계약심볼(예: TSLA -> TESLA_USDT)
 const mexcLiveSymById = new Map(); // 종목 id -> 현재 살아있는(틱 도착) 실제 MEXC 계약심볼
+const mexcKstOpenToIds = new Map();      // symbol -> Set(M:SAMSUNG | M:SKHYNIX)
+const mexcKstOpenSubscribed = new Set(); // 현재 연결에서 Day1 구독 완료 심볼
 
 const mexcSeenIds = new Set();         // 현재 연결 세션에서 실제 틱을 받은 instrumentId
 
@@ -2432,7 +2456,7 @@ async function seedMexcContractMetadata(socket){
   try{
     const options = { cache:"no-store" };
     if(controller) options.signal = controller.signal;
-    const res = await fetch("https://contract.mexc.com/api/v1/contract/detail/country", options);
+    const res = await fetch(MEXC_REST_BASE + "/api/v1/contract/detail/country", options);
     if(!res.ok) throw new Error("MEXC contract metadata " + res.status);
     const body = await res.json();
     if(wsMexc !== socket || socket.readyState !== WebSocket.OPEN) return;
@@ -2483,7 +2507,7 @@ function handleMexcTicker(data){
 
   const id = mexcSymbolToId.get(sym);
   if(!id || id === "__FX_BASE__") return;
-  const isMemoryKorStock = !!(kospiCardEls.get(id) && kospiCardEls.get(id).def && kospiCardEls.get(id).def.korStock);
+  const isMemoryKorStock = KST_OPEN_IDS.has(id);
   const cur = lastValue.get(id);
   if(cur && cur.src === "MEXC" && isFinite(cur.ts) && sourceTs + 1000 < cur.ts) return;
   if(cur && isFinite(cur.last) && cur.last > 0 && id.startsWith("M:")){
@@ -2493,7 +2517,10 @@ function handleMexcTicker(data){
   mexcSeenIds.add(id);
   if(id.startsWith("M:")){
     mexcLiveSymById.set(id, sym);
-    if(isMemoryKorStock) refreshKstOpenAnchors(); // 첫 틱·09시 롤오버 즉시 기준가 확인
+    if(isMemoryKorStock){
+      ensureMexcKstOpenStream(sym, id);
+      refreshKstOpenAnchors(); // 첫 틱·09시 롤오버 즉시 REST 백업 기준가 확인
+    }
   }
 
   const cryptoYield = id.startsWith("B:") && cur &&
@@ -2509,6 +2536,7 @@ function handleMexcTicker(data){
 
 function connectMexc(){
   if(wsMexc && (wsMexc.readyState===WebSocket.OPEN || wsMexc.readyState===WebSocket.CONNECTING)) return;
+  const generation = ++mexcGeneration;
   if(mexcTimer){ clearTimeout(mexcTimer); mexcTimer=null; }
   if(mexcPing){ clearInterval(mexcPing); mexcPing=null; }
   if(mexcMetaController){ try{ mexcMetaController.abort(); }catch(_){} mexcMetaController=null; }
@@ -2522,6 +2550,8 @@ function connectMexc(){
   mexcRejectedSymbols.clear();
   mexcTickerToSym.clear();
   mexcLiveSymById.clear();
+  mexcKstOpenToIds.clear();
+  mexcKstOpenSubscribed.clear();
   mexcSeenIds.clear();
   if(!mexcWarmupActive){
     mexcWarmupActive = true;
@@ -2588,6 +2618,22 @@ function connectMexc(){
         return;
       }
 
+      // 두 한국 메모리 종목의 UTC 일봉(=KST 09:00 시작) 시가를 1차 기준가로 사용한다.
+      if(msg.channel === "push.kline" && msg.data && msg.data.symbol && msg.data.interval === "Day1"){
+        const sym = msg.data.symbol;
+        const ids = mexcKstOpenToIds.get(sym);
+        const realOpen = parseFloat(msg.data.ro);
+        const regularOpen = parseFloat(msg.data.o);
+        const open = isFinite(realOpen) && realOpen > 0 ? realOpen : regularOpen;
+        let candleMs = Number(msg.data.t);
+        if(isFinite(candleMs) && candleMs < 1e11) candleMs *= 1000;
+        const anchorMs = latestKstOpenMs(Date.now());
+        if(ids && isFinite(open) && open > 0 && isFinite(candleMs) && Math.abs(candleMs - anchorMs) <= 300000){
+          for(const id of ids) storeKstOpenReference(id, sym, open, anchorMs, "WS_DAY1", generation);
+        }
+        return;
+      }
+
       // 단일 티커 + 공식 전체 티커 스트림을 같은 정규화 함수로 처리
       if(msg.channel === "push.ticker" && msg.data){
         mexcBackoff=800;
@@ -2621,6 +2667,7 @@ function connectMexc(){
   socket.onclose = ()=>{
     if(wsMexc !== socket) return;
     wsMexc = null;
+    mexcGeneration++;
     markFeedClosed("MEXC");
     clearMexcDiscoveryTimers();
     if(mexcPing){clearInterval(mexcPing); mexcPing=null;}
@@ -2643,6 +2690,19 @@ function mexcSubscribe(symbol, id, subscribeTicker=true){
   if(!mexcSymbolToId.has(symbol)){
     mexcSymbolToId.set(symbol, id);
     if(subscribeTicker) wsMexc.send(JSON.stringify({ method:"sub.ticker", param:{symbol}, gzip:false }));
+  }
+}
+
+function ensureMexcKstOpenStream(symbol, id){
+  if(!wsMexc || wsMexc.readyState !== WebSocket.OPEN || !symbol || !KST_OPEN_IDS.has(id)) return;
+  if(!mexcKstOpenToIds.has(symbol)) mexcKstOpenToIds.set(symbol, new Set());
+  mexcKstOpenToIds.get(symbol).add(id);
+  if(mexcKstOpenSubscribed.has(symbol)) return;
+  mexcKstOpenSubscribed.add(symbol);
+  try{
+    wsMexc.send(JSON.stringify({ method:"sub.kline", param:{symbol, interval:"Day1"}, gzip:false }));
+  }catch(_){
+    mexcKstOpenSubscribed.delete(symbol);
   }
 }
 
@@ -3180,55 +3240,77 @@ function latestKstOpenMs(nowMs){
 }
 async function fetchKstOpen(symbol, anchorMs){
   const anchorSec = Math.floor(anchorMs / 1000);
-  const url = "https://contract.mexc.com/api/v1/contract/kline/" + symbol +
+  const url = MEXC_REST_BASE + "/api/v1/contract/kline/" + encodeURIComponent(symbol) +
               "?interval=Min1&start=" + anchorSec + "&end=" + (anchorSec + 300);
-  const res = await fetch(url, { cache:"no-store" });
-  if(!res.ok) throw new Error("http " + res.status);
-  const j = await res.json();
-  const data = j && j.data;
-  if(!data || !Array.isArray(data.time) || !data.time.length) throw new Error("no data");
-  let bestIdx = -1, bestDiff = Infinity;
-  for(let i = 0; i < data.time.length; i++){
-    const diff = Number(data.time[i]) - anchorSec;
-    if(diff >= 0 && diff < bestDiff){ bestDiff = diff; bestIdx = i; }
+  const controller = typeof AbortController === "function" ? new AbortController() : null;
+  const timeout = controller ? setTimeout(()=>controller.abort(), 8000) : null;
+  try{
+    const options = { cache:"no-store" };
+    if(controller) options.signal = controller.signal;
+    const res = await fetch(url, options);
+    if(!res.ok) throw new Error("http " + res.status);
+    const j = await res.json();
+    if(!j || j.success === false || (j.code != null && Number(j.code) !== 0)) throw new Error("api " + (j && j.code));
+    const data = j.data;
+    if(!data || !Array.isArray(data.time) || !data.time.length) throw new Error("no data");
+    let bestIdx = -1, bestDiff = Infinity;
+    for(let i = 0; i < data.time.length; i++){
+      const diff = Number(data.time[i]) - anchorSec;
+      if(diff >= 0 && diff < bestDiff){ bestDiff = diff; bestIdx = i; }
+    }
+    if(bestIdx < 0 || bestDiff > 300) throw new Error("no 09:00 candle");
+    const realOpen = Array.isArray(data.realOpen) ? parseFloat(data.realOpen[bestIdx]) : NaN;
+    const regularOpen = Array.isArray(data.open) ? parseFloat(data.open[bestIdx]) : NaN;
+    const open = isFinite(realOpen) && realOpen > 0 ? realOpen : regularOpen;
+    if(!isFinite(open) || open <= 0) throw new Error("bad open");
+    return open;
+  }finally{
+    if(timeout) clearTimeout(timeout);
   }
-  if(bestIdx < 0 || bestDiff > 300) throw new Error("no 09:00 candle");
-  const openArr = (Array.isArray(data.realOpen) && data.realOpen.length === data.time.length)
-    ? data.realOpen : data.open;
-  const open = parseFloat(openArr[bestIdx]);
-  if(!isFinite(open) || open <= 0) throw new Error("bad open");
-  return open;
+}
+function storeKstOpenReference(id, symbol, open, anchorMs, source, generation){
+  if(generation !== mexcGeneration || !KST_OPEN_IDS.has(id)) return false;
+  if(!wsMexc || wsMexc.readyState !== WebSocket.OPEN) return false;
+  if(!isFinite(open) || open <= 0 || anchorMs !== latestKstOpenMs(Date.now())) return false;
+  if(mexcLiveSymById.get(id) !== symbol) return false;
+  const cur = lastValue.get(id);
+  if(cur && isFinite(cur.last) && cur.last > 0){
+    const ratio = open / cur.last;
+    if(ratio > 4 || ratio < 0.25) return false;
+  }
+  const existing = getCurrentKstRef(id);
+  if(existing && existing.source === "WS_DAY1" && source !== "WS_DAY1") return false;
+  kstOpenRefById.set(id, { open, anchorMs, symbol, source });
+  kstOpenFetchAtById.set(id, { at:Date.now(), symbol, anchorMs });
+  if(cur && isFinite(cur.last)) recomputeStoredQuote(id, NaN);
+  return true;
 }
 function refreshKstOpenAnchors(){
   const now = Date.now();
   const anchorMs = latestKstOpenMs(now);
-  for(const [id, c] of kospiCardEls){
-    if(!c.def || !c.def.korStock) continue; // 삼성전자·SK하이닉스만
+  for(const id of KST_OPEN_IDS){
     const sym = mexcLiveSymById.get(id);
-    const ref = kstOpenRefById.get(id);
-    const refIsCurrent = !!(ref && ref.anchorMs === anchorMs && (!sym || ref.symbol === sym));
-    if(refIsCurrent) continue;
+    const rawRef = kstOpenRefById.get(id);
+    const ref = getCurrentKstRef(id);
+    if(ref) continue;
 
-    if(ref){
-      kstOpenRefById.delete(id);
+    if(rawRef){
       kstOpenFetchAtById.delete(id);
       const cur = lastValue.get(id);
       if(cur && isFinite(cur.last)) recomputeStoredQuote(id, NaN);
     }
 
     if(!sym) continue;
-    if(now - (kstOpenFetchAtById.get(id) || 0) < 90000) continue;
-    kstOpenFetchAtById.set(id, now);
-    fetchKstOpen(sym, anchorMs).then(open => {
-      if(mexcLiveSymById.get(id) !== sym || latestKstOpenMs(Date.now()) !== anchorMs) return;
-      const cur = lastValue.get(id);
-      if(cur && isFinite(cur.last) && cur.last > 0){
-        const ratio = open / cur.last;
-        if(ratio > 4 || ratio < 0.25) return;
-      }
-      kstOpenRefById.set(id, { open, anchorMs, symbol:sym });
-      if(cur && isFinite(cur.last)) recomputeStoredQuote(id, NaN);
-    }).catch(()=>{ /* 기준가 확인 전에는 24시간 등락률 대신 대기 상태 유지 */ });
+    const fetchState = kstOpenFetchAtById.get(id);
+    const sameAttempt = fetchState && fetchState.symbol === sym && fetchState.anchorMs === anchorMs;
+    if(sameAttempt && now - fetchState.at < 90000) continue;
+    const requestGeneration = mexcGeneration;
+    kstOpenFetchAtById.set(id, { at:now, symbol:sym, anchorMs });
+    fetchKstOpen(sym, anchorMs)
+      .then(open => storeKstOpenReference(id, sym, open, anchorMs, "REST_MIN1", requestGeneration))
+      .catch(err => {
+        if(typeof console !== "undefined" && console.warn) console.warn("MEXC 09:00 open unavailable", id, sym, err && err.message);
+      });
   }
 }
 
@@ -3236,6 +3318,7 @@ function refreshKstOpenAnchors(){
 function closeAll(){
   const oldBinance = wsBinance, oldMexc = wsMexc, oldHyper = wsHyper;
   wsBinance = wsMexc = wsHyper = null;
+  mexcGeneration++;
   try{ oldBinance && oldBinance.close(); }catch(_){}
   try{ oldMexc && oldMexc.close(); }catch(_){}
   try{ oldHyper && oldHyper.close(); }catch(_){}
