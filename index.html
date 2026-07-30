@@ -93,7 +93,7 @@
       transition:background-color .3s ease, color .2s ease;
     }
     /* 문서(body) 대신 앱 영역만 스크롤해 모바일 브라우저 주소창이 접히지 않게 유지 */
-    .wrap{--dock-h:0px;max-width:1200px;height:100%;height:100dvh;margin:0 auto;padding:max(24px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(64px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
+    .wrap{max-width:1200px;height:100%;height:100dvh;margin:0 auto;padding:max(24px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(64px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
     .top{
       position:relative;
       display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;
@@ -137,7 +137,7 @@
     .btn:hover{background:var(--surface-hover);border-color:var(--brand-line)}
     .btn:active{transform:translateY(1px)}
     .btn.icon{padding:8px 11px;font-size:15px;line-height:1;display:inline-flex;align-items:center;justify-content:center}
-    .controlDock{position:sticky;top:env(safe-area-inset-top);z-index:40;margin-top:12px;padding:10px 12px;border:1px solid var(--line-2);border-radius:14px;background:var(--glass);box-shadow:inset 0 1px 0 var(--edge),var(--shadow-sm);backdrop-filter:blur(20px) saturate(1.6);-webkit-backdrop-filter:blur(20px) saturate(1.6)}
+    .controlDock{margin-top:12px;padding:10px 12px;border:1px solid var(--line-2);border-radius:14px;background:var(--glass);box-shadow:inset 0 1px 0 var(--edge),var(--shadow-sm);backdrop-filter:blur(20px) saturate(1.6);-webkit-backdrop-filter:blur(20px) saturate(1.6)}
     .filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .pill{
       display:inline-flex;align-items:center;gap:7px;padding:6px 12px 6px 7px;border-radius:999px;border:1px solid var(--line);
@@ -176,7 +176,7 @@
     .listEmpty b{display:block;color:var(--text);font-size:15px;margin-bottom:5px}
     .grid{margin-top:16px;border:1px solid var(--line);border-radius:var(--radius);overflow:clip;background:var(--surface);box-shadow:inset 0 1px 0 var(--edge), var(--shadow);}
     .hdr, .row{display:grid;grid-template-columns: 1.65fr .95fr .75fr .85fr;gap:12px;padding:14px 18px;align-items:center;}
-    .hdr{position:sticky;top:calc(var(--dock-h) + env(safe-area-inset-top));z-index:12;background:var(--surface-2);border-bottom:1px solid var(--line);color:var(--dim);font-size:11px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;}
+    .hdr{position:sticky;top:env(safe-area-inset-top);z-index:12;background:var(--surface-2);border-bottom:1px solid var(--line);color:var(--dim);font-size:11px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;}
     .hdr .hcell.sortable{display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none;transition:color .12s var(--ease)}
     .hdr .hcell.sortable:hover{color:var(--text)}
     .hdr .hcell.activeSort{color:var(--brand)}
@@ -2050,19 +2050,6 @@ document.querySelectorAll("#hdr .hcell.sortable").forEach(cell => {
   });
 });
 updateSortIndicators();
-
-/* sticky 탐색 도크 높이를 테이블 헤더의 고정 위치와 동기화 */
-const controlDock = document.getElementById("controlDock");
-const appWrap = document.querySelector(".wrap");
-function syncDockHeight(){
-  if(!controlDock || !appWrap) return;
-  appWrap.style.setProperty("--dock-h", Math.ceil(controlDock.getBoundingClientRect().height) + "px");
-}
-if(controlDock){
-  syncDockHeight();
-  if("ResizeObserver" in window) new ResizeObserver(syncDockHeight).observe(controlDock);
-  window.addEventListener("resize", syncDockHeight);
-}
 
 /* ===== Render ===== */
 function scheduleRender(){
