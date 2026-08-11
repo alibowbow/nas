@@ -1645,10 +1645,37 @@ if(missingToggle){
 }
 
 /* ===== 코스피200 야간선물 보드 (Cloudflare Worker 프록시 경유) ===== */
-let nightTimer = null, nightInFlight = false, nightLastOk = false, nightView = "", nightLastData = null;
+const KOSPI_CACHE_KEY = "nas:market:kospi:v1";
+const NIGHT_CACHE_KEY = "nas:market:night:v1";
+const KOSPI_CACHE_MAX_AGE = 7 * 86400000;
+const NIGHT_CACHE_MAX_AGE = 72 * 3600000;
+
+function cacheNumber(x){
+  const n = typeof x === "number" ? x : parseFloat(String(x == null ? "" : x).replace(/[, %]/g, ""));
+  return isFinite(n) ? n : NaN;
+}
+function readMarketCache(key, maxAge, valid){
+  try{
+    const data = JSON.parse(localStorage.getItem(key) || "null");
+    if(!data || !isFinite(data.receivedAt) || Date.now() - data.receivedAt > maxAge || Date.now() < data.receivedAt) return null;
+    return valid(data) ? data : null;
+  }catch(_){ return null; }
+}
+function writeMarketCache(key, data){
+  try{ localStorage.setItem(key, JSON.stringify(data)); }catch(_){}
+}
+const cachedKospi = readMarketCache(KOSPI_CACHE_KEY, KOSPI_CACHE_MAX_AGE,
+  d => cacheNumber(d.value) > 1500 && cacheNumber(d.value) < 25000);
+const cachedNight = readMarketCache(NIGHT_CACHE_KEY, NIGHT_CACHE_MAX_AGE,
+  d => cacheNumber(d.last) > 50 && cacheNumber(d.last) < 5000);
+
+let nightTimer = null, nightInFlight = false, nightLastOk = false, nightView = "",
+    nightLastData = cachedNight ? { ...cachedNight, quality:"cached" } : null;
 // 삼전하닉 도미넌스 = (A×삼성원화 + B×하닉원화) / 코스피지수  (기준 2026.06.29 ≈ 54.79%)
 const DOM_A = 0.7149386337, DOM_B = 0.08715603249;
-let nightKospi = { value: NaN, change: NaN, pct: NaN, source: "" };  // 워커가 주는 코스피 종합지수(분모) + 일간 등락 캐시
+let nightKospi = cachedKospi
+  ? { ...cachedKospi, quality:"cached" }
+  : { value:NaN, change:NaN, pct:NaN, source:"", receivedAt:0, quality:"missing" };  // 워커가 주는 코스피 종합지수(분모) + 일간 등락 캐시
 let domLastKey = "";
 let idxLastKey = "";
 // 야간장 시간(KST): 평일 18:00 ~ 익일 06:00. 그 외엔 휴장 → 폴링 중지.
@@ -1692,7 +1719,7 @@ function nightCardHTML(o){
     </div>
     <div class="kPrice${/\d/.test(String(o.price)) ? "" : " wait"}">${o.price}</div>
     <div class="kDelta ${o.deltaCls || ""}">${o.deltaText}</div>
-    <div class="kLive"><span class="dot ${o.live ? "live" : "dead"}"></span><span>${o.foot || "-"}</span></div>
+    <div class="kLive"><span class="dot ${o.live ? "live" : (o.stale ? "stale" : "dead")}"></span><span>${o.foot || "-"}</span></div>
   </div>`;
 }
 function renderNight(s){
@@ -1730,6 +1757,7 @@ function renderNight(s){
         deltaText:hasChg ? (up ? "▲ " : "▼ ") + delta : "전일 대비 –",
         deltaCls:hasChg ? (up ? "up" : "down") : "",
         live:false,
+        stale:true,
         foot:"마지막 정상값 " + ageText(d.receivedAt) + " · 재시도 예정"
       });
     }else{
@@ -1740,7 +1768,8 @@ function renderNight(s){
   }
   // ok
   const d = s.data;
-  nightLastData = { ...d, receivedAt:Date.now() };
+  nightLastData = { ...d, receivedAt:Date.now(), quality:"live" };
+  writeMarketCache(NIGHT_CACHE_KEY, nightLastData);
   const hasChg = isFinite(d.change) || isFinite(d.changePct);
   const up = (isFinite(d.change) ? d.change : d.changePct) >= 0;
   const pts = isFinite(d.change) ? fmtPrice(Math.abs(d.change)) : null;
@@ -1769,7 +1798,7 @@ function domCardHTML(o){
     </div>
     <div class="kPrice${/\d/.test(String(o.value)) ? "" : " wait"}">${o.value}</div>
     <div class="kDelta">${o.delta || ""}</div>
-    <div class="kLive"><span class="dot ${o.live ? "live" : "dead"}"></span><span>${o.foot || "-"}</span></div>
+    <div class="kLive"><span class="dot ${o.live ? "live" : (o.stale ? "stale" : "dead")}"></span><span>${o.foot || "-"}</span></div>
   </div>`;
 }
 // 코스피 종합지수 카드 (워커가 준 nightKospi 값 표시). 장중 실시간 / 마감 후 마감값 고정.
@@ -1784,44 +1813,47 @@ function kospiIdxCardHTML(o){
     </div>
     <div class="kPrice${/\d/.test(String(o.value)) ? "" : " wait"}">${o.value}</div>
     <div class="kDelta ${o.deltaCls || ""}">${o.delta || ""}</div>
-    <div class="kLive"><span class="dot ${o.live ? "live" : "dead"}"></span><span>${o.foot || "-"}</span></div>
+    <div class="kLive"><span class="dot ${o.live ? "live" : (o.stale ? "stale" : "dead")}"></span><span>${o.foot || "-"}</span></div>
   </div>`;
 }
 function renderKospiIndex(){
   if(_captureInFlight) return;   // 캡처 중 노드 분리 방지
   if(!kospiIdxCard) return;
   const v = nightKospi.value, pct = nightKospi.pct, chg = nightKospi.change;
+  const cached = nightKospi.quality === "cached";
   let key, html;
   if(!isFinite(v)){
     key = "wait";
     html = kospiIdxCardHTML({ value:"-", delta:"지수 대기", live:false, foot:"연결 대기" });
   }else{
-    const live = isKospiLive();
+    const marketLive = isKospiLive();
     let delta, deltaCls = "";
     if(isFinite(pct)){
-      const flat = Math.abs(pct) < 0.005;           // 보합(반올림 0.00%) → 중립 회색
       const up = pct >= 0;
-      deltaCls = flat ? "" : (up ? "up" : "down");
-      const arrow = flat ? "" : (up ? "▲ " : "▼ ");
-      const sign = flat ? "" : (up ? "+" : "−");
-      const pctStr = "(" + sign + Math.abs(pct).toFixed(2) + "%)";
-      delta = isFinite(chg) ? `${arrow}${Math.abs(chg).toFixed(2)} ${pctStr}` : `${arrow}${pctStr}`;
-    }else{
-      delta = live ? "장중 · 실시간" : "장 마감값";   // 등락 데이터 없을 때 폴백
-    }
-    key = "ok|" + v + "|" + (isFinite(pct) ? pct.toFixed(2) : "-") + "|" + (live ? "L" : "C");
+      const pts = isFinite(chg) ? fmtPrice(Math.abs(chg)) : "";
+      delta = (up ? "▲ " : "▼ ") + (pts ? pts + " (" : "") + Math.abs(pct).toFixed(2) + "%" + (pts ? ")" : "");
+      deltaCls = up ? "up" : "down";
+    }else if(isFinite(chg)){
+      const up = chg >= 0; delta = (up ? "▲ " : "▼ ") + fmtPrice(Math.abs(chg)); deltaCls = up ? "up" : "down";
+    }else delta = "전일 대비 –";
+    key = ["ok", v, isFinite(pct) ? pct.toFixed(3) : "-", nightKospi.source || "", cached ? "cached" : "live"].join("|");
+    const source = nightKospi.source || "지수";
     html = kospiIdxCardHTML({
       value: fmtPrice(v),
       delta,
       deltaCls,
-      live: true,
-      foot: (nightKospi.source || "지수") + (live ? " · 실시간" : " · 마감")
+      live: !cached,
+      stale: cached,
+      foot: cached
+        ? source + " · 마지막 정상값 " + ageText(nightKospi.receivedAt)
+        : source + (marketLive ? " · 실시간" : " · 마감")
     });
   }
   if(key === idxLastKey) return;
   idxLastKey = key;
   kospiIdxCard.innerHTML = html;
 }
+
 // 도미넌스 카드 하단: '삼성/하이닉스 개별 도미넌스'(각 사가 코스피에서 차지하는 비중, 둘을 더하면 전체 도미넌스) 한 줄씩.
 function domShareRow(label, share){
   const body = isFinite(share) ? share.toFixed(2) + "%" : "–";
@@ -1834,8 +1866,9 @@ function renderDominance(){
   if(!domCard) return;
   const sv = lastValue.get("M:SAMSUNG"), hv = lastValue.get("M:SKHYNIX");
   const fx = usdKrwRate();
+  const cached = nightKospi.quality === "cached";
   if(domSrc) domSrc.textContent = isFinite(nightKospi.value)
-    ? ("코스피 " + fmtPrice(nightKospi.value) + (nightKospi.source ? " · " + nightKospi.source : ""))
+    ? ("코스피 " + fmtPrice(nightKospi.value) + (nightKospi.source ? " · " + nightKospi.source : "") + (cached ? " · 저장값" : ""))
     : "지수 대기";
   let key, html;
   if(!sv || !hv || !isFinite(sv.last) || !isFinite(hv.last) || !isFinite(fx)){
@@ -1850,12 +1883,15 @@ function renderDominance(){
     }else{
       const sDom = DOM_A*sKRW / kospi, hDom = DOM_B*hKRW / kospi;   // 개별 도미넌스(합 = 전체)
       const dom = sDom + hDom;
-      key = "ok|" + dom.toFixed(2) + "|" + sDom.toFixed(2) + "|" + hDom.toFixed(2) + "|" + kospi;
+      key = ["ok", dom.toFixed(2), sDom.toFixed(2), hDom.toFixed(2), kospi, nightKospi.source || "", cached ? "cached" : "live"].join("|");
       html = domCardHTML({
         value: dom.toFixed(2) + "%",
         delta: domShareRow("삼성", sDom) + domShareRow("하이닉스", hDom),
-        live: true,
-        foot: `코스피 ${fmtPrice(kospi)} · ${nightKospi.source || "지수"}`
+        live: !cached,
+        stale: cached,
+        foot: cached
+          ? `코스피 ${fmtPrice(kospi)} · 마지막 정상값 ${ageText(nightKospi.receivedAt)}`
+          : `코스피 ${fmtPrice(kospi)} · ${nightKospi.source || "지수"}`
       });
     }
   }
@@ -1864,51 +1900,95 @@ function renderDominance(){
   domCard.innerHTML = html;
 }
 
-// 도미넌스용 코스피 지수는 24h 필요 → 워커를 항상 폴링하되, 야간선물 '표시'만 세션으로 게이트.
+async function fetchKospiProxy(params){
+  const join = KOSPI_NIGHT_PROXY_URL.includes("?") ? "&" : "?";
+  const controller = new AbortController();
+  const timeout = setTimeout(()=>controller.abort(), 8500);
+  try{
+    const res = await fetch(KOSPI_NIGHT_PROXY_URL + join + params, { cache:"no-store", signal:controller.signal });
+    const text = await res.text();
+    let data;
+    try{ data = JSON.parse(text); }
+    catch(_){ throw new Error("JSON 형식 불일치"); }
+    return { ok:res.ok, status:res.status, data };
+  }finally{
+    clearTimeout(timeout);
+  }
+}
+function applyKospiPayload(j){
+  const kv = nightNum(j && j.kospi);
+  if(!(isFinite(kv) && kv > 1500 && kv < 25000)) return false;
+  const nc = nightNum(j.kospiChange), np = nightNum(j.kospiPct);
+  nightKospi = {
+    value:kv,
+    change:isFinite(nc) ? nc : nightKospi.change,
+    pct:isFinite(np) ? np : nightKospi.pct,
+    source:j.kospiSource || nightKospi.source || "",
+    receivedAt:Date.now(),
+    quality:"live"
+  };
+  writeMarketCache(KOSPI_CACHE_KEY, nightKospi);
+  return true;
+}
+function nightPayload(j){
+  if(!j || j.ok === false) return null;
+  const last = nightNum(j.last ?? j.price ?? j.close ?? j.value);
+  const change = nightNum(j.change ?? j.chg ?? j.diff);
+  const changePct = nightNum(j.changePct ?? j.changeRate ?? j.pct ?? j.rate);
+  if(!(isFinite(last) && last > 50 && last < 5000)) return null;
+  return { last, change, changePct, name:j.name, source:j.source || j.src, session:j.session, time:j.time || j.updated };
+}
+
+// 코스피 지수와 야간선물을 별도 요청한다. 한 소스가 느려도 다른 카드가 함께 멈추지 않는다.
 async function pollNight(){
   if(!KOSPI_NIGHT_PROXY_URL){ renderNight({ kind:"config" }); renderDominance(); return; }
   if(nightInFlight) return;
   nightInFlight = true;
   const inSession = isNightSession();
   if(inSession && !nightLastOk) renderNight({ kind:"loading" });
+  const needKospi = isKospiLive() || !isFinite(nightKospi.value) || nightKospi.quality === "cached";
+  const jobs = [];
+  if(needKospi) jobs.push({ kind:"kospi", promise:fetchKospiProxy("kospi=1&night=0") });
+  if(inSession) jobs.push({ kind:"night", promise:fetchKospiProxy("kospi=0&night=1") });
+
   try{
-    // 코스피 지수는 장중(09~16시)이거나 아직 캐시 전일 때만 요청. 장 마감 후엔 마감값 유지(?kospi=0).
-    const wantKospi = isKospiLive() || !isFinite(nightKospi.value);
-    const url = KOSPI_NIGHT_PROXY_URL + (KOSPI_NIGHT_PROXY_URL.includes("?") ? "&" : "?") + "kospi=" + (wantKospi ? "1" : "0");
-    const controller = new AbortController();
-    const timeout = setTimeout(()=>controller.abort(), 12000);
-    let res;
-    try{
-      res = await fetch(url, { cache:"no-store", signal:controller.signal });
-    }finally{
-      clearTimeout(timeout);
-    }
-    if(!res.ok) throw new Error("HTTP " + res.status);
-    const j = await res.json();
-    const kv = nightNum(j.kospi);
-    if(isFinite(kv)){  // 도미넌스 분모(24h) + 일간 등락. 등락이 잠깐 비어도 직전 유효값 유지(깜빡임 방지)
-      const nc = nightNum(j.kospiChange), np = nightNum(j.kospiPct);
-      nightKospi = { value: kv, change: isFinite(nc) ? nc : nightKospi.change, pct: isFinite(np) ? np : nightKospi.pct, source: j.kospiSource || "" };
-    }
+    const settled = await Promise.allSettled(jobs.map(x => x.promise));
+    let gotKospi = false, gotNight = false, liveNight = null;
+    settled.forEach((result, i) => {
+      const kind = jobs[i].kind;
+      if(result.status !== "fulfilled"){
+        if(typeof console !== "undefined" && console.warn) console.warn("KOSPI proxy request failed", kind, result.reason && result.reason.message);
+        return;
+      }
+      const j = result.value.data;
+      if(kind === "kospi") gotKospi = applyKospiPayload(j) || gotKospi;
+      if(kind === "night"){
+        const d = nightPayload(j);
+        if(d){ gotNight = true; liveNight = d; }
+      }
+    });
+
     if(inSession){
-      if(j.ok === false) throw new Error(j.error || "프록시 실패");
-      const last = nightNum(j.last ?? j.price ?? j.close ?? j.value);
-      const change = nightNum(j.change ?? j.chg ?? j.diff);
-      const changePct = nightNum(j.changePct ?? j.changeRate ?? j.pct ?? j.rate);
-      if(!isFinite(last) && !isFinite(changePct)) throw new Error("형식 불일치");
-      nightLastOk = true;
-      renderNight({ kind:"ok", data:{ last, change, changePct, name:j.name, source:j.source || j.src, session:j.session, time:j.time || j.updated } });
+      if(gotNight && liveNight){
+        nightLastOk = true;
+        renderNight({ kind:"ok", data:liveNight });
+      }else{
+        nightLastOk = false;
+        renderNight({ kind:"error", msg:"야간선물 응답 지연" });
+      }
     }else{
-      nightLastOk = false; renderNight({ kind:"closed", nextOpen: nextNightOpen() }); // 야간선물은 휴장 표시
+      nightLastOk = false;
+      renderNight({ kind:"closed", nextOpen:nextNightOpen() });
     }
-    renderDominance();
-  }catch(e){
-    if(inSession){ nightLastOk = false; renderNight({ kind:"error", msg:String(e && e.message || e) }); }
+    if(!gotKospi && !isFinite(nightKospi.value) && typeof console !== "undefined" && console.warn){
+      console.warn("KOSPI index unavailable");
+    }
     renderDominance();
   }finally{
     nightInFlight = false;
   }
 }
+
 // 세션 중 30s, 그 외 90s(도미넌스 지수만 갱신). setTimeout 재귀로 동적 간격.
 function scheduleNight(){
   if(nightTimer) clearTimeout(nightTimer);
@@ -1918,7 +1998,9 @@ function scheduleNight(){
 function startNight(){
   if(domNote) domNote.textContent = "삼성전자 보통주와 SK하이닉스가 코스피 전체 시가총액에서 차지하는 비중(추정)이에요. 삼성전자우선주(005935)는 포함하지 않아요. 비공식 참고용 · 투자권유 아님.";
   if(!KOSPI_NIGHT_PROXY_URL){ renderNight({ kind:"config" }); renderDominance(); return; }
-  pollNight();      // 즉시 1회(지수 시드 + 도미넌스 + 야간선물)
+  if(isNightSession() && nightLastData) renderNight({ kind:"error", msg:"저장된 마지막 정상값" });
+  renderDominance();
+  pollNight();      // 즉시 1회(코스피·야간선물 독립 갱신)
   scheduleNight();  // 이후 동적 간격(24h)
 }
 startNight();
