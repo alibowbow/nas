@@ -871,6 +871,8 @@ const MEXC_DISPLAY = [
   "BRKBUSDT","VUSDT","AXPUSDT","MSUSDT","CUSDT","WFCUSDT","SCHWUSDT",
   "HDUSDT","COSTUSDT","SBUXUSDT","LOWUSDT","TGTUSDT","EBAYUSDT","GMEUSDT","DKNGUSDT","PDDUSDT","BIDUUSDT",
   "NVOUSDT","PFEUSDT","MRKUSDT","ABBVUSDT","TMOUSDT",
+  // 헬스바이오 · 바이오텍/유전자치료
+  "AMGNUSDT","BNTXUSDT","BEAMUSDT","MRNAUSDT","GILDUSDT","REGNUSDT","VRTXUSDT",
   "BEUSDT","TUSDT","CATUSDT","DEUSDT","UPSUSDT","HONUSDT",
   // 양자컴퓨팅 · 우주
   "IONQUSDT","QBTSUSDT","RGTIUSDT","INFQUSDT","RDWUSDT","LUNRUSDT","ASTSUSDT",
@@ -1070,7 +1072,7 @@ const STOCK_GROUPS = [
   { key:"mobility",   label:"모빌리티·EV",    bases:["HYUNDAI","UBER","RIVN","LCID","NIO","LI","XPEV","F","GM"] },
   { key:"finance",    label:"금융",          bases:["JPM","BAC","GS","MA","PYPL","FUTU","BRKB","V","AXP","MS","C","WFC","SCHW"] },
   { key:"consumer",   label:"소비·리테일",    bases:["WMT","MCD","NKE","PEP","HD","COST","SBUX","LOW","TGT","EBAY","BABA","JD","PDD","BIDU"] },
-  { key:"health",     label:"헬스케어",       bases:["LLY","JNJ","UNH","NVO","PFE","MRK","ABBV","TMO"] },
+  { key:"health",     label:"헬스바이오",     bases:["LLY","JNJ","UNH","NVO","PFE","MRK","ABBV","TMO","AMGN","BNTX","BEAM","MRNA","GILD","REGN","VRTX"] },
   { key:"industrial", label:"산업·기타",      bases:["GE","BA","XOM","VZ","T","CAT","DE","UPS","HON","BE"] },
 ];
 const STOCK_GROUP_OF = new Map();
@@ -1118,6 +1120,8 @@ const ASSET_NAMES = {
   // 헬스케어
   NVO:"Novo Nordisk", PFE:"Pfizer", MRK:"Merck", ABBV:"AbbVie", TMO:"Thermo Fisher",
   LLY:"Eli Lilly", JNJ:"Johnson & Johnson", UNH:"UnitedHealth",
+  AMGN:"Amgen", BNTX:"BioNTech", BEAM:"Beam Therapeutics", MRNA:"Moderna",
+  GILD:"Gilead Sciences", REGN:"Regeneron Pharmaceuticals", VRTX:"Vertex Pharmaceuticals",
   // 산업·기타
   BE:"Bloom Energy", T:"AT&T", CAT:"Caterpillar", DE:"Deere", UPS:"UPS", HON:"Honeywell",
   BA:"Boeing", GE:"GE Aerospace", VZ:"Verizon", XOM:"Exxon Mobil", CL:"Colgate-Palmolive",
